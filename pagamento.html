@@ -4,9 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Pagamento - Studio Waleska</title>
-  <!-- Biblioteca para gerar QR Code no navegador (sem API externa) -->
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-  <!-- Biblioteca para gerar payload PIX -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode-pix@1.0.0/dist/qrcode-pix.min.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -28,12 +26,7 @@
       box-shadow: 0 20px 60px rgba(0,0,0,0.12);
       text-align: center;
     }
-    .logo {
-      font-family: 'Dancing Script', cursive;
-      font-size: 32px;
-      color: #d4af37;
-      margin-bottom: 5px;
-    }
+    .logo { font-family: 'Dancing Script', cursive; font-size: 32px; color: #d4af37; margin-bottom: 5px; }
     .subtitle { color: #888; font-size: 14px; margin-bottom: 20px; }
     .cliente { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 5px; }
     .valor { font-size: 36px; font-weight: 700; color: #d4af37; margin: 10px 0 20px; }
@@ -91,36 +84,22 @@
   <div class="container">
     <div class="logo">✨ Studio Waleska</div>
     <div class="subtitle">Pagamento via PIX</div>
-
     <div class="cliente" id="clienteNome">Cliente</div>
     <div class="valor" id="valorPix">R$ 0,00</div>
-
-    <div class="qr-code">
-      <div id="qrCode"><span class="carregando">⏳ Gerando QR Code...</span></div>
-    </div>
-
-    <div class="codigo-area" id="codigoPix">
-      ⏳ Gerando código PIX...
-    </div>
-
-    <button class="btn-copiar" id="btnCopiar" onclick="copiarPix()">
-      📋 Copiar código PIX
-    </button>
-
+    <div class="qr-code"><div id="qrCode"><span class="carregando">⏳ Gerando QR Code...</span></div></div>
+    <div class="codigo-area" id="codigoPix">⏳ Gerando código PIX...</div>
+    <button class="btn-copiar" id="btnCopiar" onclick="copiarPix()">📋 Copiar código PIX</button>
     <div class="instrucoes">
       1. Copie o código acima<br>
       2. Abra o app do seu banco<br>
       3. Cole na opção <strong>"PIX Copia e Cola"</strong><br>
       4. Confirme o pagamento
     </div>
-
-    <div class="footer">
-      Qualquer dúvida, fale com Waleska pelo WhatsApp
-    </div>
+    <div class="footer">Qualquer dúvida, fale com Waleska pelo WhatsApp</div>
   </div>
 
   <script>
-    // ========== GERADOR DE PAYLOAD PIX (FALLBACK MANUAL) ==========
+    // ========== GERADOR MANUAL DE PAYLOAD (SEM CAMPO 62) ==========
     function gerarPayloadManual(chave, nome, valor, cidade) {
       function crc16(hex) {
         let crc = 0xFFFF;
@@ -173,24 +152,21 @@
       payload += '5802BR';
       payload += criarCampo('59', nomeLimpo);
       payload += criarCampo('60', cidadeLimpa);
-      // Campo 62 com referência vazia (para a Caixa funcionar)
-      payload += '6200';
+      // CAMPO 62 REMOVIDO – compatível com a Caixa
+      // payload += '6200'; // Opcional: campo vazio
       const crc = crc16(payload + '6304');
       payload += '6304' + crc;
       return payload;
     }
 
-    // ========== FUNÇÃO PARA GERAR QR CODE LOCALMENTE ==========
+    // ========== GERAR QR CODE LOCAL ==========
     function gerarQRCodeLocal(texto, elemento) {
-      // Verifica se a biblioteca QRCode está disponível
       if (typeof QRCode === 'undefined') {
-        elemento.innerHTML = '<span class="erro">Biblioteca QRCode não carregada. Recarregue.</span>';
+        elemento.innerHTML = '<span class="erro">Biblioteca QRCode não carregada.</span>';
         return false;
       }
       try {
-        // Limpa o elemento
         elemento.innerHTML = '';
-        // Cria o QR Code
         new QRCode(elemento, {
           text: texto,
           width: 200,
@@ -201,8 +177,7 @@
         });
         return true;
       } catch (e) {
-        elemento.innerHTML = '<span class="erro">Erro ao gerar QR Code: ' + e.message + '</span>';
-        console.error(e);
+        elemento.innerHTML = '<span class="erro">Erro: ' + e.message + '</span>';
         return false;
       }
     }
@@ -229,8 +204,9 @@
         return;
       }
 
-      // ===== TENTA GERAR PAYLOAD COM BIBLIOTECA QRCODEPIX =====
       let payload = null;
+
+      // Tenta gerar com a biblioteca qrcode-pix (se disponível)
       try {
         if (typeof QRCodePix !== 'undefined' && QRCodePix.generate) {
           payload = QRCodePix.generate({
@@ -240,11 +216,9 @@
             city: 'Joinville'
           });
         }
-      } catch (e) {
-        console.warn('QRCodePix falhou:', e);
-      }
+      } catch (e) { /* fallback */ }
 
-      // ===== FALLBACK: GERADOR MANUAL =====
+      // Se falhou, usa o gerador manual SEM o campo 62
       if (!payload) {
         payload = gerarPayloadManual(chavePix, nomePix, valorNumerico, 'Joinville');
       }
@@ -256,24 +230,10 @@
       }
 
       codigoPixEl.textContent = payload;
-
-      // ===== GERAR QR CODE LOCALMENTE =====
-      const sucesso = gerarQRCodeLocal(payload, qrCodeEl);
-      if (!sucesso) {
-        // Se falhou, tenta recarregar a biblioteca novamente (usando fallback)
-        setTimeout(function() {
-          if (typeof QRCode === 'undefined') {
-            // Se ainda não carregou, carrega via CDN novamente (mas isso já está no head)
-            // Apenas mostra uma mensagem
-            qrCodeEl.innerHTML = '<span class="erro">Não foi possível carregar a biblioteca QRCode. Verifique sua conexão.</span>';
-          } else {
-            gerarQRCodeLocal(payload, qrCodeEl);
-          }
-        }, 1000);
-      }
+      gerarQRCodeLocal(payload, qrCodeEl);
     });
 
-    // ========== FUNÇÃO COPIAR ==========
+    // ========== COPIAR ==========
     function copiarPix() {
       const codigo = document.getElementById('codigoPix').textContent;
       if (!codigo || codigo.includes('⏳') || codigo.includes('Erro') || codigo.includes('inválido')) {
@@ -290,9 +250,7 @@
             btn.textContent = '📋 Copiar código PIX';
             btn.classList.remove('copiado');
           }, 3000);
-        }).catch(() => {
-          copiarFallback(codigo);
-        });
+        }).catch(() => copiarFallback(codigo));
       } else {
         copiarFallback(codigo);
       }
