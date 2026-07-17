@@ -19,9 +19,8 @@ const SENHA_DOMINGO = String.fromCharCode(100, 111, 109, 105, 110, 103, 111);
 // ========== DADOS DO ESTÚDIO ==========
 const CHAVE_PIX = "59591030000162";
 const NOME_PIX = "Syanne Waleska Gomes dos Santos";
-const LINK_MAPS = "https://maps.google.com/?q=Rua+Dom+Greg%C3%B3rio+Warmeling+960,+Joinville,+SC";
 
-// ===== URL DA PÁGINA DE PAGAMENTO (GITHUB PAGES) =====
+// ===== URL DA PÁGINA DE PAGAMENTO =====
 const URL_PAGAMENTO = "https://kelvinbr2224-sys.github.io/agenda-waleska/pagamento.html";
 
 // ========== FUNÇÃO PARA SABER SE O SERVIÇO COBRA SINAL ==========
@@ -497,7 +496,7 @@ function abrirModalAgendamento(data){
 function fechar(){ modal.style.display = "none"; }
 function fecharLista(){ document.getElementById("modalLista").style.display = "none"; }
 
-// ========== WHATSAPP COM LINK DE PAGAMENTO ==========
+// ========== WHATSAPP ==========
 function enviarWhatsApp(nome, tel, data, hora, servico) {
   const [a, m, d] = data.split('-');
   const telLimpo = tel.replace(/\D/g, '');
@@ -512,7 +511,6 @@ function enviarWhatsApp(nome, tel, data, hora, servico) {
     sinal = (precos[servico].cobraSinal && servicoCobraSinal(servico)) ? (preco * 0.3) : 0;
   }
 
-  // ===== GERA LINK PARA PÁGINA DE PAGAMENTO =====
   const valorFormatado = sinal.toFixed(2);
   const linkPagamento = `${URL_PAGAMENTO}?valor=${valorFormatado}&cliente=${encodeURIComponent(nome)}`;
 
@@ -527,9 +525,9 @@ function enviarWhatsApp(nome, tel, data, hora, servico) {
 
   if (sinal > 0) {
     msg += `\n🔒 *Sinal de 30%:* R$ ${sinal.toFixed(2)}\n`;
-    msg += `\n📍 *Endereço:* [Clique aqui para ver no Maps](${LINK_MAPS})\n`;
+    // ENDEREÇO REMOVIDO
     msg += `\n💳 *Pagamento do sinal (clique no link abaixo):*\n`;
-    msg += ` ${linkPagamento}\n`; // ← espaço antes do link para garantir que fique azul
+    msg += ` ${linkPagamento}\n`;
     msg += `\n*Copie o link acima ou clique nele para acessar a página de pagamento.*\n`;
   }
 
@@ -573,7 +571,6 @@ function copiarMensagemWhatsApp(data, idx) {
 
   if (sinal > 0) {
     msg += `\n🔒 *Sinal de 30%:* R$ ${sinal.toFixed(2)}\n`;
-    msg += `\n📍 *Endereço:* [Clique aqui para ver no Maps](${LINK_MAPS})\n`;
     msg += `\n💳 *Pagamento do sinal (clique no link abaixo):*\n`;
     msg += ` ${linkPagamento}\n`;
     msg += `\n*Copie o link acima ou clique nele para acessar a página de pagamento.*\n`;
