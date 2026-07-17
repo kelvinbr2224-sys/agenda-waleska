@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Pagamento - Studio Waleska</title>
-  <!-- Usa API do Google Charts para gerar QR Code (não precisa de biblioteca) -->
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body {
@@ -118,178 +117,181 @@
   </div>
 
   <script>
-    // ========== GERADOR DE PAYLOAD PIX MANUAL ==========
+    // ========== GERADOR DE PAYLOAD PIX CORRETO ==========
     function gerarPayloadPIX(chave, nome, valor, cidade) {
-      // Validação básica
-      if (!chave || !nome || !valor || valor <= 0) {
-        return null;
-      }
-
-      // Função para calcular CRC16 (necessário para o payload PIX)
-      function crc16(hex) {
-        let crc = 0xFFFF;
-        const bytes = [];
-        for (let i = 0; i < hex.length; i += 2) {
-          bytes.push(parseInt(hex.substr(i, 2), 16));
+        if (!chave || !nome || !valor || valor <= 0) {
+            return null;
         }
-        for (let i = 0; i < bytes.length; i++) {
-          crc ^= bytes[i] << 8;
-          for (let j = 0; j < 8; j++) {
-            if (crc & 0x8000) {
-              crc = (crc << 1) ^ 0x1021;
-            } else {
-              crc = crc << 1;
+
+        // ===== FUNÇÃO CRC16 (PADRÃO BR CODE) =====
+        function crc16(hex) {
+            let crc = 0xFFFF;
+            const bytes = [];
+            for (let i = 0; i < hex.length; i += 2) {
+                bytes.push(parseInt(hex.substr(i, 2), 16));
             }
-            crc &= 0xFFFF;
-          }
+            for (let i = 0; i < bytes.length; i++) {
+                crc ^= bytes[i] << 8;
+                for (let j = 0; j < 8; j++) {
+                    if (crc & 0x8000) {
+                        crc = (crc << 1) ^ 0x1021;
+                    } else {
+                        crc = crc << 1;
+                    }
+                    crc &= 0xFFFF;
+                }
+            }
+            return crc.toString(16).toUpperCase().padStart(4, '0');
         }
-        const hexStr = crc.toString(16).toUpperCase();
-        return hexStr.padStart(4, '0');
-      }
 
-      // Construção do payload conforme padrão BR Code
-      const nomeLimpo = nome.substring(0, 25);
-      const cidadeLimpa = cidade.substring(0, 15);
-      const valorFormatado = valor.toFixed(2);
+        // ===== FUNÇÃO PARA CRIAR CAMPOS COM TAMANHO =====
+        function criarCampo(id, valor) {
+            const str = String(valor);
+            const len = String(str.length).padStart(2, '0');
+            return id + len + str;
+        }
 
-      // Identificador do PIX
-      let payload = '000201';
-      
-      // Merchant Account Information - PIX
-      payload += '26';
-      const gui = '0014br.gov.bcb.pix';
-      const chaveFormatada = '01' + String(chave.length).padStart(2, '0') + chave;
-      const merchantInfo = gui + chaveFormatada;
-      payload += String(merchantInfo.length).padStart(2, '0') + merchantInfo;
-      
-      // Merchant Category Code (sempre 0000 para PIX)
-      payload += '52040000';
-      
-      // Transaction Currency (BRL = 986)
-      payload += '5303986';
-      
-      // Transaction Amount
-      const amountStr = valorFormatado;
-      payload += '54' + String(amountStr.length).padStart(2, '0') + amountStr;
-      
-      // Country Code (BR)
-      payload += '5802BR';
-      
-      // Merchant Name
-      const nomeBytes = nomeLimpo;
-      payload += '59' + String(nomeBytes.length).padStart(2, '0') + nomeBytes;
-      
-      // Merchant City
-      const cidadeBytes = cidadeLimpa;
-      payload += '60' + String(cidadeBytes.length).padStart(2, '0') + cidadeBytes;
-      
-      // Additional Data Field (Payment Reference)
-      const ref = '***';
-      payload += '62' + '05' + '03' + ref;
-      
-      // CRC16
-      const crc = crc16(payload + '6304');
-      payload += '6304' + crc;
+        // ===== CONSTROI PAYLOAD =====
+        let payload = '';
 
-      return payload;
+        // 1. Payload Format Indicator (ID 00) - fixo
+        payload += '000201';
+
+        // 2. Merchant Account Information (ID 26)
+        let gui = '0014br.gov.bcb.pix';
+        let chaveFormatada = '01' + String(chave.length).padStart(2, '0') + chave;
+        let merchantInfo = gui + chaveFormatada;
+        payload += criarCampo('26', merchantInfo);
+
+        // 3. Merchant Category Code (ID 52) - fixo
+        payload += '52040000';
+
+        // 4. Transaction Currency (ID 53) - fixo BRL = 986
+        payload += '5303986';
+
+        // 5. Transaction Amount (ID 54)
+        const amount = valor.toFixed(2);
+        payload += criarCampo('54', amount);
+
+        // 6. Country Code (ID 58) - fixo BR
+        payload += '5802BR';
+
+        // 7. Merchant Name (ID 59)
+        const nomeLimpo = nome.substring(0, 25);
+        payload += criarCampo('59', nomeLimpo);
+
+        // 8. Merchant City (ID 60)
+        const cidadeLimpa = cidade.substring(0, 15);
+        payload += criarCampo('60', cidadeLimpa);
+
+        // 9. Additional Data Field (ID 62)
+        const ref = '***';
+        const campo05 = criarCampo('05', ref);
+        payload += criarCampo('62', campo05);
+
+        // 10. CRC16 (ID 63) - calculado após todo o payload
+        const crc = crc16(payload + '6304');
+        payload += '6304' + crc;
+
+        return payload;
     }
 
     // ========== FUNÇÃO PARA GERAR QR CODE VIA API ==========
     function gerarQRCodeAPI(texto, elemento) {
-      const url = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(texto);
-      const img = document.createElement('img');
-      img.src = url;
-      img.alt = 'QR Code PIX';
-      img.style.width = '200px';
-      img.style.height = '200px';
-      elemento.innerHTML = '';
-      elemento.appendChild(img);
-      return true;
+        const url = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(texto);
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = 'QR Code PIX';
+        img.style.width = '200px';
+        img.style.height = '200px';
+        img.onerror = function() {
+            elemento.innerHTML = '<span class="erro">❌ Erro ao carregar QR Code. Recarregue a página.</span>';
+        };
+        elemento.innerHTML = '';
+        elemento.appendChild(img);
+        return true;
     }
 
     // ========== CARREGAR DADOS ==========
     document.addEventListener('DOMContentLoaded', function() {
-      // Pega os parâmetros da URL
-      const urlParams = new URLSearchParams(window.location.search);
-      let valor = urlParams.get('valor') || '0.00';
-      valor = valor.replace(',', '.');
-      const cliente = decodeURIComponent(urlParams.get('cliente') || 'Cliente');
-      const chavePix = urlParams.get('chave') || '59591030000162';
-      const nomePix = urlParams.get('nome') || 'Syanne Waleska Gomes dos Santos';
+        const urlParams = new URLSearchParams(window.location.search);
+        let valor = urlParams.get('valor') || '0.00';
+        valor = valor.replace(',', '.');
+        const cliente = decodeURIComponent(urlParams.get('cliente') || 'Cliente');
+        const chavePix = urlParams.get('chave') || '59591030000162';
+        const nomePix = urlParams.get('nome') || 'Syanne Waleska Gomes dos Santos';
 
-      // Exibe nome e valor
-      document.getElementById('clienteNome').textContent = 'Olá, ' + cliente + '!';
-      document.getElementById('valorPix').textContent = 'R$ ' + valor.replace('.', ',');
+        document.getElementById('clienteNome').textContent = 'Olá, ' + cliente + '!';
+        document.getElementById('valorPix').textContent = 'R$ ' + valor.replace('.', ',');
 
-      const valorNumerico = parseFloat(valor);
-      const codigoPixEl = document.getElementById('codigoPix');
-      const qrCodeEl = document.getElementById('qrCode');
+        const valorNumerico = parseFloat(valor);
+        const codigoPixEl = document.getElementById('codigoPix');
+        const qrCodeEl = document.getElementById('qrCode');
 
-      // Valida valor
-      if (isNaN(valorNumerico) || valorNumerico <= 0) {
-        codigoPixEl.textContent = '❌ Valor inválido.';
-        qrCodeEl.innerHTML = '<span class="erro">Valor inválido</span>';
-        return;
-      }
+        if (isNaN(valorNumerico) || valorNumerico <= 0) {
+            codigoPixEl.textContent = '❌ Valor inválido.';
+            qrCodeEl.innerHTML = '<span class="erro">Valor inválido</span>';
+            return;
+        }
 
-      // Gera payload PIX
-      const payload = gerarPayloadPIX(chavePix, nomePix, valorNumerico, 'Joinville');
-      
-      if (!payload) {
-        codigoPixEl.textContent = '❌ Erro ao gerar código PIX.';
-        qrCodeEl.innerHTML = '<span class="erro">Erro ao gerar</span>';
-        return;
-      }
+        // Gera payload PIX
+        const payload = gerarPayloadPIX(chavePix, nomePix, valorNumerico, 'Joinville');
+        
+        if (!payload) {
+            codigoPixEl.textContent = '❌ Erro ao gerar código PIX.';
+            qrCodeEl.innerHTML = '<span class="erro">Erro ao gerar</span>';
+            return;
+        }
 
-      // Exibe o payload
-      codigoPixEl.textContent = payload;
+        // Exibe o payload
+        codigoPixEl.textContent = payload;
 
-      // Gera QR Code usando API
-      try {
-        gerarQRCodeAPI(payload, qrCodeEl);
-      } catch (e) {
-        qrCodeEl.innerHTML = '<span class="erro">Erro ao gerar QR Code</span>';
-        console.error('Erro QR Code:', e);
-      }
+        // Gera QR Code usando API
+        try {
+            gerarQRCodeAPI(payload, qrCodeEl);
+        } catch (e) {
+            qrCodeEl.innerHTML = '<span class="erro">Erro ao gerar QR Code</span>';
+            console.error('Erro QR Code:', e);
+        }
     });
 
     // ========== FUNÇÃO COPIAR ==========
     function copiarPix() {
-      const codigo = document.getElementById('codigoPix').textContent;
-      if (!codigo || codigo.includes('⏳') || codigo.includes('Erro') || codigo.includes('inválido')) {
-        alert('⚠️ Código PIX indisponível. Tente novamente.');
-        return;
-      }
+        const codigo = document.getElementById('codigoPix').textContent;
+        if (!codigo || codigo.includes('⏳') || codigo.includes('Erro') || codigo.includes('inválido')) {
+            alert('⚠️ Código PIX indisponível. Tente novamente.');
+            return;
+        }
 
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(codigo).then(() => {
-          const btn = document.getElementById('btnCopiar');
-          btn.textContent = '✅ Copiado!';
-          btn.classList.add('copiado');
-          setTimeout(() => {
-            btn.textContent = '📋 Copiar código PIX';
-            btn.classList.remove('copiado');
-          }, 3000);
-        }).catch(() => {
-          copiarFallback(codigo);
-        });
-      } else {
-        copiarFallback(codigo);
-      }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(codigo).then(() => {
+                const btn = document.getElementById('btnCopiar');
+                btn.textContent = '✅ Copiado!';
+                btn.classList.add('copiado');
+                setTimeout(() => {
+                    btn.textContent = '📋 Copiar código PIX';
+                    btn.classList.remove('copiado');
+                }, 3000);
+            }).catch(() => {
+                copiarFallback(codigo);
+            });
+        } else {
+            copiarFallback(codigo);
+        }
     }
 
     function copiarFallback(codigo) {
-      const textarea = document.createElement('textarea');
-      textarea.value = codigo;
-      document.body.appendChild(textarea);
-      textarea.select();
-      try {
-        document.execCommand('copy');
-        alert('✅ Código copiado!');
-      } catch (e) {
-        alert('⚠️ Selecione o código acima e copie manualmente.');
-      }
-      document.body.removeChild(textarea);
+        const textarea = document.createElement('textarea');
+        textarea.value = codigo;
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand('copy');
+            alert('✅ Código copiado!');
+        } catch (e) {
+            alert('⚠️ Selecione o código acima e copie manualmente.');
+        }
+        document.body.removeChild(textarea);
     }
   </script>
 </body>
