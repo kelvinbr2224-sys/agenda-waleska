@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Pagamento - Studio Waleska</title>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode-pix@1.0.0/dist/qrcode-pix.min.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body {
@@ -76,7 +75,6 @@
     .instrucoes { color: #777; font-size: 13px; margin-top: 15px; line-height: 1.6; }
     .instrucoes strong { color: #333; }
     .footer { margin-top: 20px; font-size: 12px; color: #aaa; border-top: 1px solid #eee; padding-top: 15px; }
-    .carregando { color: #999; font-size: 14px; padding: 20px; }
     .erro { color: #c0392b; font-size: 14px; padding: 10px; }
   </style>
 </head>
@@ -86,7 +84,7 @@
     <div class="subtitle">Pagamento via PIX</div>
     <div class="cliente" id="clienteNome">Cliente</div>
     <div class="valor" id="valorPix">R$ 0,00</div>
-    <div class="qr-code"><div id="qrCode"><span class="carregando">⏳ Gerando QR Code...</span></div></div>
+    <div class="qr-code"><div id="qrCode"><span style="color:#999;">⏳ Gerando...</span></div></div>
     <div class="codigo-area" id="codigoPix">⏳ Gerando código PIX...</div>
     <button class="btn-copiar" id="btnCopiar" onclick="copiarPix()">📋 Copiar código PIX</button>
     <div class="instrucoes">
@@ -99,8 +97,18 @@
   </div>
 
   <script>
-    // ========== GERADOR MANUAL DE PAYLOAD (SEM CAMPO 62) ==========
-    function gerarPayloadManual(chave, nome, valor, cidade) {
+    // ========== GERADOR DE PAYLOAD MANUAL (SEM CAMPO 62) ==========
+    function gerarPayload(chave, nome, valor, cidade) {
+      // Remove caracteres especiais e acentos
+      function limpar(texto) {
+        return texto
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-zA-Z0-9 ]/g, '')
+          .trim();
+      }
+
+      // CRC16 padrão BR Code
       function crc16(hex) {
         let crc = 0xFFFF;
         const bytes = [];
@@ -127,18 +135,15 @@
         return id + len + str;
       }
 
-      function limparTexto(texto, max) {
-        return texto
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-zA-Z0-9 ]/g, '')
-          .trim()
-          .substring(0, max) || 'Studio';
-      }
+      // Limpa e encurta nome (máx 25 caracteres)
+      let nomeLimpo = limpar(nome).substring(0, 23);
+      if (nomeLimpo.length < 3) nomeLimpo = 'Studio Waleska';
+      
+      let cidadeLimpa = limpar(cidade).substring(0, 15);
+      if (cidadeLimpa.length < 2) cidadeLimpa = 'Joinville';
 
-      const nomeLimpo = limparTexto(nome, 23);
-      const cidadeLimpa = limparTexto(cidade, 15);
       const chaveLimpa = chave.replace(/\D/g, '');
+      // Detecta tipo: 01 = CPF (11 dígitos), 02 = CNPJ (14 dígitos)
       const tipoChave = chaveLimpa.length === 14 ? '02' : '01';
 
       let payload = '000201';
@@ -152,15 +157,14 @@
       payload += '5802BR';
       payload += criarCampo('59', nomeLimpo);
       payload += criarCampo('60', cidadeLimpa);
-      // CAMPO 62 REMOVIDO – compatível com a Caixa
-      // payload += '6200'; // Opcional: campo vazio
+      // SEM CAMPO 62 – removido para compatibilidade com Caixa
       const crc = crc16(payload + '6304');
       payload += '6304' + crc;
       return payload;
     }
 
-    // ========== GERAR QR CODE LOCAL ==========
-    function gerarQRCodeLocal(texto, elemento) {
+    // ========== GERAR QR CODE ==========
+    function gerarQRCode(texto, elemento) {
       if (typeof QRCode === 'undefined') {
         elemento.innerHTML = '<span class="erro">Biblioteca QRCode não carregada.</span>';
         return false;
@@ -182,7 +186,7 @@
       }
     }
 
-    // ========== CARREGAR DADOS ==========
+    // ========== CARREGAR ==========
     document.addEventListener('DOMContentLoaded', function() {
       const urlParams = new URLSearchParams(window.location.search);
       let valor = urlParams.get('valor') || '0.00';
@@ -195,49 +199,35 @@
       document.getElementById('valorPix').textContent = 'R$ ' + valor.replace('.', ',');
 
       const valorNumerico = parseFloat(valor);
-      const codigoPixEl = document.getElementById('codigoPix');
-      const qrCodeEl = document.getElementById('qrCode');
+      const codigoEl = document.getElementById('codigoPix');
+      const qrEl = document.getElementById('qrCode');
 
       if (isNaN(valorNumerico) || valorNumerico <= 0) {
-        codigoPixEl.textContent = '❌ Valor inválido.';
-        qrCodeEl.innerHTML = '<span class="erro">Valor inválido</span>';
+        codigoEl.textContent = '❌ Valor inválido.';
+        qrEl.innerHTML = '<span class="erro">Valor inválido</span>';
         return;
       }
 
-      let payload = null;
-
-      // Tenta gerar com a biblioteca qrcode-pix (se disponível)
-      try {
-        if (typeof QRCodePix !== 'undefined' && QRCodePix.generate) {
-          payload = QRCodePix.generate({
-            pixKey: chavePix,
-            merchantName: nomePix,
-            amount: valorNumerico.toFixed(2),
-            city: 'Joinville'
-          });
-        }
-      } catch (e) { /* fallback */ }
-
-      // Se falhou, usa o gerador manual SEM o campo 62
+      // Gera payload
+      const payload = gerarPayload(chavePix, nomePix, valorNumerico, 'Joinville');
       if (!payload) {
-        payload = gerarPayloadManual(chavePix, nomePix, valorNumerico, 'Joinville');
-      }
-
-      if (!payload) {
-        codigoPixEl.textContent = '❌ Erro ao gerar código PIX.';
-        qrCodeEl.innerHTML = '<span class="erro">Erro ao gerar</span>';
+        codigoEl.textContent = '❌ Erro ao gerar código PIX.';
+        qrEl.innerHTML = '<span class="erro">Erro</span>';
         return;
       }
 
-      codigoPixEl.textContent = payload;
-      gerarQRCodeLocal(payload, qrCodeEl);
+      codigoEl.textContent = payload;
+      gerarQRCode(payload, qrEl);
+
+      // Debug: mostra no console para verificação
+      console.log('Payload gerado:', payload);
     });
 
     // ========== COPIAR ==========
     function copiarPix() {
       const codigo = document.getElementById('codigoPix').textContent;
       if (!codigo || codigo.includes('⏳') || codigo.includes('Erro') || codigo.includes('inválido')) {
-        alert('⚠️ Código PIX indisponível. Tente novamente.');
+        alert('⚠️ Código PIX indisponível.');
         return;
       }
 
