@@ -97,9 +97,9 @@
   </div>
 
   <script>
-    // ========== GERADOR DE PAYLOAD MANUAL (SEM CAMPO 62) ==========
+    // ========== GERADOR DE PAYLOAD CORRETO ==========
     function gerarPayload(chave, nome, valor, cidade) {
-      // Remove caracteres especiais e acentos
+      // Limpa e encurta texto
       function limpar(texto) {
         return texto
           .normalize('NFD')
@@ -108,7 +108,7 @@
           .trim();
       }
 
-      // CRC16 padrão BR Code
+      // CRC16 (padrão BR Code)
       function crc16(hex) {
         let crc = 0xFFFF;
         const bytes = [];
@@ -129,37 +129,36 @@
         return crc.toString(16).toUpperCase().padStart(4, '0');
       }
 
+      // Cria campo com tamanho automático
       function criarCampo(id, valor) {
         const str = String(valor);
         const len = String(str.length).padStart(2, '0');
         return id + len + str;
       }
 
-      // Limpa e encurta nome (máx 25 caracteres)
-      let nomeLimpo = limpar(nome).substring(0, 23);
-      if (nomeLimpo.length < 3) nomeLimpo = 'Studio Waleska';
-      
-      let cidadeLimpa = limpar(cidade).substring(0, 15);
-      if (cidadeLimpa.length < 2) cidadeLimpa = 'Joinville';
-
       const chaveLimpa = chave.replace(/\D/g, '');
-      // Detecta tipo: 01 = CPF (11 dígitos), 02 = CNPJ (14 dígitos)
       const tipoChave = chaveLimpa.length === 14 ? '02' : '01';
+      const nomeLimpo = limpar(nome).substring(0, 23) || 'Studio Waleska';
+      const cidadeLimpa = limpar(cidade).substring(0, 15) || 'Joinville';
 
-      let payload = '000201';
+      // Constroi o campo 26
       const gui = '0014br.gov.bcb.pix';
       const chaveFormatada = tipoChave + String(chaveLimpa.length).padStart(2, '0') + chaveLimpa;
       const merchantInfo = gui + chaveFormatada;
+
+      let payload = '';
+      payload += '000201'; // Payload Format Indicator
       payload += criarCampo('26', merchantInfo);
-      payload += '52040000';
-      payload += '5303986';
+      payload += '52040000'; // MCC fixo
+      payload += '5303986'; // BRL
       payload += criarCampo('54', valor.toFixed(2));
       payload += '5802BR';
       payload += criarCampo('59', nomeLimpo);
       payload += criarCampo('60', cidadeLimpa);
-      // SEM CAMPO 62 – removido para compatibilidade com Caixa
+      // CAMPO 62 REMOVIDO – compatível com Caixa
       const crc = crc16(payload + '6304');
       payload += '6304' + crc;
+
       return payload;
     }
 
@@ -219,8 +218,10 @@
       codigoEl.textContent = payload;
       gerarQRCode(payload, qrEl);
 
-      // Debug: mostra no console para verificação
-      console.log('Payload gerado:', payload);
+      // Exibe no console para depuração
+      console.log('✅ Payload PIX gerado com sucesso:');
+      console.log(payload);
+      console.log('Tamanho total:', payload.length);
     });
 
     // ========== COPIAR ==========
