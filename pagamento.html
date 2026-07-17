@@ -117,7 +117,7 @@
   </div>
 
   <script>
-    // ========== GERADOR DE PAYLOAD PIX CORRETO ==========
+    // ========== GERADOR DE PAYLOAD PIX (OTIMIZADO PARA CAIXA) ==========
     function gerarPayloadPIX(chave, nome, valor, cidade) {
         if (!chave || !nome || !valor || valor <= 0) {
             return null;
@@ -154,7 +154,7 @@
         // ===== CONSTROI PAYLOAD =====
         let payload = '';
 
-        // 1. Payload Format Indicator (ID 00) - fixo
+        // 1. Payload Format Indicator (ID 00)
         payload += '000201';
 
         // 2. Merchant Account Information (ID 26)
@@ -163,40 +163,58 @@
         let merchantInfo = gui + chaveFormatada;
         payload += criarCampo('26', merchantInfo);
 
-        // 3. Merchant Category Code (ID 52) - fixo
+        // 3. Merchant Category Code (ID 52)
         payload += '52040000';
 
-        // 4. Transaction Currency (ID 53) - fixo BRL = 986
+        // 4. Transaction Currency (ID 53) - BRL = 986
         payload += '5303986';
 
         // 5. Transaction Amount (ID 54)
         const amount = valor.toFixed(2);
         payload += criarCampo('54', amount);
 
-        // 6. Country Code (ID 58) - fixo BR
+        // 6. Country Code (ID 58) - BR
         payload += '5802BR';
 
-        // 7. Merchant Name (ID 59)
-        const nomeLimpo = nome.substring(0, 25);
+        // 7. Merchant Name (ID 59) - Nome LIMPO e CURTO (máx 25 caracteres)
+        // Remove acentos e espaços extras, limita a 23 caracteres para a Caixa
+        let nomeLimpo = nome
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-zA-Z0-9 ]/g, '')
+            .trim()
+            .substring(0, 23);
+        // Se ficar com menos de 3 caracteres, usa um nome padrão
+        if (nomeLimpo.length < 3) {
+            nomeLimpo = 'Studio Waleska';
+        }
         payload += criarCampo('59', nomeLimpo);
 
-        // 8. Merchant City (ID 60)
-        const cidadeLimpa = cidade.substring(0, 15);
+        // 8. Merchant City (ID 60) - sem acentos, máx 15 caracteres
+        let cidadeLimpa = cidade
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-zA-Z0-9 ]/g, '')
+            .trim()
+            .substring(0, 15);
+        if (cidadeLimpa.length < 2) {
+            cidadeLimpa = 'Joinville';
+        }
         payload += criarCampo('60', cidadeLimpa);
 
-        // 9. Additional Data Field (ID 62)
-        const ref = '***';
-        const campo05 = criarCampo('05', ref);
-        payload += criarCampo('62', campo05);
+        // 9. Additional Data Field (ID 62) - SEM REFERÊNCIA (apenas o campo vazio)
+        // A Caixa rejeita se tiver caracteres especiais como ***
+        // Então enviamos apenas a estrutura mínima: 6200 (tamanho 0)
+        payload += '6200';
 
-        // 10. CRC16 (ID 63) - calculado após todo o payload
+        // 10. CRC16 (ID 63)
         const crc = crc16(payload + '6304');
         payload += '6304' + crc;
 
         return payload;
     }
 
-    // ========== FUNÇÃO PARA GERAR QR CODE VIA API ==========
+    // ========== FUNÇÃO PARA GERAR QR CODE ==========
     function gerarQRCodeAPI(texto, elemento) {
         const url = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(texto);
         const img = document.createElement('img');
@@ -205,7 +223,7 @@
         img.style.width = '200px';
         img.style.height = '200px';
         img.onerror = function() {
-            elemento.innerHTML = '<span class="erro">❌ Erro ao carregar QR Code. Recarregue a página.</span>';
+            elemento.innerHTML = '<span class="erro">❌ Erro ao carregar QR Code.</span>';
         };
         elemento.innerHTML = '';
         elemento.appendChild(img);
@@ -219,7 +237,7 @@
         valor = valor.replace(',', '.');
         const cliente = decodeURIComponent(urlParams.get('cliente') || 'Cliente');
         const chavePix = urlParams.get('chave') || '59591030000162';
-        const nomePix = urlParams.get('nome') || 'Syanne Waleska Gomes dos Santos';
+        const nomePix = urlParams.get('nome') || 'Syanne Waleska Gomes';
 
         document.getElementById('clienteNome').textContent = 'Olá, ' + cliente + '!';
         document.getElementById('valorPix').textContent = 'R$ ' + valor.replace('.', ',');
@@ -234,7 +252,7 @@
             return;
         }
 
-        // Gera payload PIX
+        // Gera payload PIX com nome encurtado
         const payload = gerarPayloadPIX(chavePix, nomePix, valorNumerico, 'Joinville');
         
         if (!payload) {
@@ -243,10 +261,8 @@
             return;
         }
 
-        // Exibe o payload
         codigoPixEl.textContent = payload;
 
-        // Gera QR Code usando API
         try {
             gerarQRCodeAPI(payload, qrCodeEl);
         } catch (e) {
