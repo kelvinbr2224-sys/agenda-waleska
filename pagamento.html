@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Pagamento - Studio Waleska</title>
+  <!-- Carrega a biblioteca qrcode-pix (geração de payload) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-pix@1.0.0/dist/qrcode-pix.min.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body {
@@ -82,6 +84,7 @@
     .footer { margin-top: 20px; font-size: 12px; color: #aaa; border-top: 1px solid #eee; padding-top: 15px; }
     .carregando { color: #999; font-size: 14px; padding: 20px; }
     .erro { color: #c0392b; font-size: 14px; padding: 10px; }
+    .sucesso { color: #4caf50; }
   </style>
 </head>
 <body>
@@ -117,105 +120,81 @@
   </div>
 
   <script>
-    // ========== GERADOR DE PAYLOAD PIX (OTIMIZADO PARA CAIXA) ==========
-    function gerarPayloadPIX(chave, nome, valor, cidade) {
-        if (!chave || !nome || !valor || valor <= 0) {
-            return null;
-        }
-
-        // ===== FUNÇÃO CRC16 (PADRÃO BR CODE) =====
+    (function() {
+      // ========== GERADOR MANUAL DE PAYLOAD (FALLBACK) ==========
+      function gerarPayloadManual(chave, nome, valor, cidade) {
+        // Função CRC16 (padrão BR Code)
         function crc16(hex) {
-            let crc = 0xFFFF;
-            const bytes = [];
-            for (let i = 0; i < hex.length; i += 2) {
-                bytes.push(parseInt(hex.substr(i, 2), 16));
+          let crc = 0xFFFF;
+          const bytes = [];
+          for (let i = 0; i < hex.length; i += 2) {
+            bytes.push(parseInt(hex.substr(i, 2), 16));
+          }
+          for (let i = 0; i < bytes.length; i++) {
+            crc ^= bytes[i] << 8;
+            for (let j = 0; j < 8; j++) {
+              if (crc & 0x8000) {
+                crc = (crc << 1) ^ 0x1021;
+              } else {
+                crc = crc << 1;
+              }
+              crc &= 0xFFFF;
             }
-            for (let i = 0; i < bytes.length; i++) {
-                crc ^= bytes[i] << 8;
-                for (let j = 0; j < 8; j++) {
-                    if (crc & 0x8000) {
-                        crc = (crc << 1) ^ 0x1021;
-                    } else {
-                        crc = crc << 1;
-                    }
-                    crc &= 0xFFFF;
-                }
-            }
-            return crc.toString(16).toUpperCase().padStart(4, '0');
+          }
+          return crc.toString(16).toUpperCase().padStart(4, '0');
         }
 
-        // ===== FUNÇÃO PARA CRIAR CAMPOS COM TAMANHO =====
         function criarCampo(id, valor) {
-            const str = String(valor);
-            const len = String(str.length).padStart(2, '0');
-            return id + len + str;
+          const str = String(valor);
+          const len = String(str.length).padStart(2, '0');
+          return id + len + str;
         }
 
-        // ===== CONSTROI PAYLOAD =====
+        // Limpa e encurta nome/cidade
+        function limparTexto(texto, max) {
+          return texto
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-zA-Z0-9 ]/g, '')
+            .trim()
+            .substring(0, max);
+        }
+
+        const nomeLimpo = limparTexto(nome, 23) || 'Studio';
+        const cidadeLimpa = limparTexto(cidade, 15) || 'Joinville';
+
+        // Detecta tipo de chave: 01 = CPF (11 dígitos), 02 = CNPJ (14 dígitos)
+        const chaveLimpa = chave.replace(/\D/g, '');
+        let tipoChave = '01';
+        if (chaveLimpa.length === 14) tipoChave = '02';
+        else if (chaveLimpa.length === 11) tipoChave = '01';
+        else tipoChave = '01'; // fallback
+
         let payload = '';
-
-        // 1. Payload Format Indicator (ID 00)
-        payload += '000201';
-
-        // 2. Merchant Account Information (ID 26)
-        let gui = '0014br.gov.bcb.pix';
-        let chaveFormatada = '01' + String(chave.length).padStart(2, '0') + chave;
-        let merchantInfo = gui + chaveFormatada;
+        payload += '000201'; // Payload Format Indicator
+        const gui = '0014br.gov.bcb.pix';
+        const chaveFormatada = tipoChave + String(chaveLimpa.length).padStart(2, '0') + chaveLimpa;
+        const merchantInfo = gui + chaveFormatada;
         payload += criarCampo('26', merchantInfo);
-
-        // 3. Merchant Category Code (ID 52)
-        payload += '52040000';
-
-        // 4. Transaction Currency (ID 53) - BRL = 986
-        payload += '5303986';
-
-        // 5. Transaction Amount (ID 54)
-        const amount = valor.toFixed(2);
-        payload += criarCampo('54', amount);
-
-        // 6. Country Code (ID 58) - BR
+        payload += '52040000'; // MCC
+        payload += '5303986'; // BRL
+        payload += criarCampo('54', valor.toFixed(2));
         payload += '5802BR';
-
-        // 7. Merchant Name (ID 59) - Nome LIMPO e CURTO (máx 25 caracteres)
-        // Remove acentos e espaços extras, limita a 23 caracteres para a Caixa
-        let nomeLimpo = nome
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-zA-Z0-9 ]/g, '')
-            .trim()
-            .substring(0, 23);
-        // Se ficar com menos de 3 caracteres, usa um nome padrão
-        if (nomeLimpo.length < 3) {
-            nomeLimpo = 'Studio Waleska';
-        }
         payload += criarCampo('59', nomeLimpo);
-
-        // 8. Merchant City (ID 60) - sem acentos, máx 15 caracteres
-        let cidadeLimpa = cidade
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-zA-Z0-9 ]/g, '')
-            .trim()
-            .substring(0, 15);
-        if (cidadeLimpa.length < 2) {
-            cidadeLimpa = 'Joinville';
-        }
         payload += criarCampo('60', cidadeLimpa);
-
-        // 9. Additional Data Field (ID 62) - SEM REFERÊNCIA (apenas o campo vazio)
-        // A Caixa rejeita se tiver caracteres especiais como ***
-        // Então enviamos apenas a estrutura mínima: 6200 (tamanho 0)
-        payload += '6200';
-
-        // 10. CRC16 (ID 63)
+        // Campo 62 com referência '***'
+        const ref = '***';
+        const campo05 = criarCampo('05', ref);
+        payload += criarCampo('62', campo05);
+        // CRC16
         const crc = crc16(payload + '6304');
         payload += '6304' + crc;
-
         return payload;
-    }
+      }
 
-    // ========== FUNÇÃO PARA GERAR QR CODE ==========
-    function gerarQRCodeAPI(texto, elemento) {
+      // ========== FUNÇÃO PARA GERAR QR CODE ==========
+      function gerarQRCode(texto, elemento) {
+        // Usa a API do qrserver.com
         const url = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(texto);
         const img = document.createElement('img');
         img.src = url;
@@ -223,21 +202,21 @@
         img.style.width = '200px';
         img.style.height = '200px';
         img.onerror = function() {
-            elemento.innerHTML = '<span class="erro">❌ Erro ao carregar QR Code.</span>';
+          elemento.innerHTML = '<span class="erro">❌ Erro ao carregar QR Code.</span>';
         };
         elemento.innerHTML = '';
         elemento.appendChild(img);
         return true;
-    }
+      }
 
-    // ========== CARREGAR DADOS ==========
-    document.addEventListener('DOMContentLoaded', function() {
+      // ========== CARREGAR DADOS ==========
+      document.addEventListener('DOMContentLoaded', function() {
         const urlParams = new URLSearchParams(window.location.search);
         let valor = urlParams.get('valor') || '0.00';
         valor = valor.replace(',', '.');
         const cliente = decodeURIComponent(urlParams.get('cliente') || 'Cliente');
         const chavePix = urlParams.get('chave') || '59591030000162';
-        const nomePix = urlParams.get('nome') || 'Syanne Waleska Gomes';
+        const nomePix = urlParams.get('nome') || 'Syanne Waleska Gomes dos Santos';
 
         document.getElementById('clienteNome').textContent = 'Olá, ' + cliente + '!';
         document.getElementById('valorPix').textContent = 'R$ ' + valor.replace('.', ',');
@@ -247,67 +226,80 @@
         const qrCodeEl = document.getElementById('qrCode');
 
         if (isNaN(valorNumerico) || valorNumerico <= 0) {
-            codigoPixEl.textContent = '❌ Valor inválido.';
-            qrCodeEl.innerHTML = '<span class="erro">Valor inválido</span>';
-            return;
+          codigoPixEl.textContent = '❌ Valor inválido.';
+          qrCodeEl.innerHTML = '<span class="erro">Valor inválido</span>';
+          return;
         }
 
-        // Gera payload PIX com nome encurtado
-        const payload = gerarPayloadPIX(chavePix, nomePix, valorNumerico, 'Joinville');
-        
+        // ===== TENTA USAR BIBLIOTECA QRCODEPIX =====
+        let payload = null;
+        try {
+          if (typeof QRCodePix !== 'undefined' && QRCodePix.generate) {
+            payload = QRCodePix.generate({
+              pixKey: chavePix,
+              merchantName: nomePix,
+              amount: valorNumerico.toFixed(2),
+              city: 'Joinville'
+            });
+          }
+        } catch (e) {
+          console.warn('Biblioteca QRCodePix falhou:', e);
+        }
+
+        // ===== FALLBACK: GERADOR MANUAL =====
         if (!payload) {
-            codigoPixEl.textContent = '❌ Erro ao gerar código PIX.';
-            qrCodeEl.innerHTML = '<span class="erro">Erro ao gerar</span>';
-            return;
+          console.log('Usando gerador manual para payload');
+          payload = gerarPayloadManual(chavePix, nomePix, valorNumerico, 'Joinville');
+        }
+
+        if (!payload) {
+          codigoPixEl.textContent = '❌ Erro ao gerar código PIX.';
+          qrCodeEl.innerHTML = '<span class="erro">Erro ao gerar</span>';
+          return;
         }
 
         codigoPixEl.textContent = payload;
-
-        try {
-            gerarQRCodeAPI(payload, qrCodeEl);
-        } catch (e) {
-            qrCodeEl.innerHTML = '<span class="erro">Erro ao gerar QR Code</span>';
-            console.error('Erro QR Code:', e);
-        }
-    });
+        gerarQRCode(payload, qrCodeEl);
+      });
+    })();
 
     // ========== FUNÇÃO COPIAR ==========
     function copiarPix() {
-        const codigo = document.getElementById('codigoPix').textContent;
-        if (!codigo || codigo.includes('⏳') || codigo.includes('Erro') || codigo.includes('inválido')) {
-            alert('⚠️ Código PIX indisponível. Tente novamente.');
-            return;
-        }
+      const codigo = document.getElementById('codigoPix').textContent;
+      if (!codigo || codigo.includes('⏳') || codigo.includes('Erro') || codigo.includes('inválido')) {
+        alert('⚠️ Código PIX indisponível. Tente novamente.');
+        return;
+      }
 
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(codigo).then(() => {
-                const btn = document.getElementById('btnCopiar');
-                btn.textContent = '✅ Copiado!';
-                btn.classList.add('copiado');
-                setTimeout(() => {
-                    btn.textContent = '📋 Copiar código PIX';
-                    btn.classList.remove('copiado');
-                }, 3000);
-            }).catch(() => {
-                copiarFallback(codigo);
-            });
-        } else {
-            copiarFallback(codigo);
-        }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(codigo).then(() => {
+          const btn = document.getElementById('btnCopiar');
+          btn.textContent = '✅ Copiado!';
+          btn.classList.add('copiado');
+          setTimeout(() => {
+            btn.textContent = '📋 Copiar código PIX';
+            btn.classList.remove('copiado');
+          }, 3000);
+        }).catch(() => {
+          copiarFallback(codigo);
+        });
+      } else {
+        copiarFallback(codigo);
+      }
     }
 
     function copiarFallback(codigo) {
-        const textarea = document.createElement('textarea');
-        textarea.value = codigo;
-        document.body.appendChild(textarea);
-        textarea.select();
-        try {
-            document.execCommand('copy');
-            alert('✅ Código copiado!');
-        } catch (e) {
-            alert('⚠️ Selecione o código acima e copie manualmente.');
-        }
-        document.body.removeChild(textarea);
+      const textarea = document.createElement('textarea');
+      textarea.value = codigo;
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        alert('✅ Código copiado!');
+      } catch (e) {
+        alert('⚠️ Selecione o código acima e copie manualmente.');
+      }
+      document.body.removeChild(textarea);
     }
   </script>
 </body>
