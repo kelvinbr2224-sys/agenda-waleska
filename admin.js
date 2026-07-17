@@ -497,7 +497,7 @@ function abrirModalAgendamento(data){
 function fechar(){ modal.style.display = "none"; }
 function fecharLista(){ document.getElementById("modalLista").style.display = "none"; }
 
-// ========== WHATSAPP (COM LINK DE PAGAMENTO) ==========
+// ========== WHATSAPP COM LINK DE PAGAMENTO ==========
 function enviarWhatsApp(nome, tel, data, hora, servico) {
   const [a, m, d] = data.split('-');
   const telLimpo = tel.replace(/\D/g, '');
@@ -513,7 +513,6 @@ function enviarWhatsApp(nome, tel, data, hora, servico) {
   }
 
   // ===== GERA LINK PARA PÁGINA DE PAGAMENTO =====
-  // Usa ponto no valor (ex: 36.00) para compatibilidade com JavaScript
   const valorFormatado = sinal.toFixed(2);
   const linkPagamento = `${URL_PAGAMENTO}?valor=${valorFormatado}&cliente=${encodeURIComponent(nome)}`;
 
@@ -530,7 +529,7 @@ function enviarWhatsApp(nome, tel, data, hora, servico) {
     msg += `\n🔒 *Sinal de 30%:* R$ ${sinal.toFixed(2)}\n`;
     msg += `\n📍 *Endereço:* [Clique aqui para ver no Maps](${LINK_MAPS})\n`;
     msg += `\n💳 *Pagamento do sinal (clique no link abaixo):*\n`;
-    msg += `${linkPagamento}\n`;
+    msg += ` ${linkPagamento}\n`; // ← espaço antes do link para garantir que fique azul
     msg += `\n*Copie o link acima ou clique nele para acessar a página de pagamento.*\n`;
   }
 
@@ -545,7 +544,7 @@ function enviarWhatsAppIndividual(data, idx) {
   enviarWhatsApp(ag.nome, ag.telefone, data, ag.hora, ag.servico);
 }
 
-// ========== COPIAR MENSAGEM (COM LINK DE PAGAMENTO) ==========
+// ========== COPIAR MENSAGEM ==========
 function copiarMensagemWhatsApp(data, idx) {
   const ag = agendamentos[data][idx];
   const [a, m, d] = data.split('-');
@@ -576,7 +575,7 @@ function copiarMensagemWhatsApp(data, idx) {
     msg += `\n🔒 *Sinal de 30%:* R$ ${sinal.toFixed(2)}\n`;
     msg += `\n📍 *Endereço:* [Clique aqui para ver no Maps](${LINK_MAPS})\n`;
     msg += `\n💳 *Pagamento do sinal (clique no link abaixo):*\n`;
-    msg += `${linkPagamento}\n`;
+    msg += ` ${linkPagamento}\n`;
     msg += `\n*Copie o link acima ou clique nele para acessar a página de pagamento.*\n`;
   }
 
