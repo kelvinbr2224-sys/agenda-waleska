@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Pagamento - Studio Waleska</title>
-  <!-- Carrega a biblioteca qrcode-pix (geração de payload) -->
+  <!-- Biblioteca para gerar QR Code no navegador (sem API externa) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <!-- Biblioteca para gerar payload PIX -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode-pix@1.0.0/dist/qrcode-pix.min.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -39,17 +41,16 @@
       background: #fff;
       padding: 20px;
       border-radius: 16px;
-      display: inline-block;
-      border: 2px solid #f0ece6;
-      margin-bottom: 20px;
-      min-height: 220px;
-      min-width: 220px;
       display: flex;
       justify-content: center;
       align-items: center;
+      border: 2px solid #f0ece6;
+      margin: 0 auto 20px;
+      width: 220px;
+      height: 220px;
     }
     #qrCode { width: 200px; height: 200px; display: flex; justify-content: center; align-items: center; }
-    #qrCode img { width: 100% !important; height: 100% !important; }
+    #qrCode img, #qrCode canvas { max-width: 100%; max-height: 100%; }
     .codigo-area {
       background: #f5f0ea;
       padding: 14px;
@@ -84,7 +85,6 @@
     .footer { margin-top: 20px; font-size: 12px; color: #aaa; border-top: 1px solid #eee; padding-top: 15px; }
     .carregando { color: #999; font-size: 14px; padding: 20px; }
     .erro { color: #c0392b; font-size: 14px; padding: 10px; }
-    .sucesso { color: #4caf50; }
   </style>
 </head>
 <body>
@@ -120,148 +120,158 @@
   </div>
 
   <script>
-    (function() {
-      // ========== GERADOR MANUAL DE PAYLOAD (FALLBACK) ==========
-      function gerarPayloadManual(chave, nome, valor, cidade) {
-        // Função CRC16 (padrão BR Code)
-        function crc16(hex) {
-          let crc = 0xFFFF;
-          const bytes = [];
-          for (let i = 0; i < hex.length; i += 2) {
-            bytes.push(parseInt(hex.substr(i, 2), 16));
-          }
-          for (let i = 0; i < bytes.length; i++) {
-            crc ^= bytes[i] << 8;
-            for (let j = 0; j < 8; j++) {
-              if (crc & 0x8000) {
-                crc = (crc << 1) ^ 0x1021;
-              } else {
-                crc = crc << 1;
-              }
-              crc &= 0xFFFF;
+    // ========== GERADOR DE PAYLOAD PIX (FALLBACK MANUAL) ==========
+    function gerarPayloadManual(chave, nome, valor, cidade) {
+      function crc16(hex) {
+        let crc = 0xFFFF;
+        const bytes = [];
+        for (let i = 0; i < hex.length; i += 2) {
+          bytes.push(parseInt(hex.substr(i, 2), 16));
+        }
+        for (let i = 0; i < bytes.length; i++) {
+          crc ^= bytes[i] << 8;
+          for (let j = 0; j < 8; j++) {
+            if (crc & 0x8000) {
+              crc = (crc << 1) ^ 0x1021;
+            } else {
+              crc = crc << 1;
             }
+            crc &= 0xFFFF;
           }
-          return crc.toString(16).toUpperCase().padStart(4, '0');
         }
-
-        function criarCampo(id, valor) {
-          const str = String(valor);
-          const len = String(str.length).padStart(2, '0');
-          return id + len + str;
-        }
-
-        // Limpa e encurta nome/cidade
-        function limparTexto(texto, max) {
-          return texto
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-zA-Z0-9 ]/g, '')
-            .trim()
-            .substring(0, max);
-        }
-
-        const nomeLimpo = limparTexto(nome, 23) || 'Studio';
-        const cidadeLimpa = limparTexto(cidade, 15) || 'Joinville';
-
-        // Detecta tipo de chave: 01 = CPF (11 dígitos), 02 = CNPJ (14 dígitos)
-        const chaveLimpa = chave.replace(/\D/g, '');
-        let tipoChave = '01';
-        if (chaveLimpa.length === 14) tipoChave = '02';
-        else if (chaveLimpa.length === 11) tipoChave = '01';
-        else tipoChave = '01'; // fallback
-
-        let payload = '';
-        payload += '000201'; // Payload Format Indicator
-        const gui = '0014br.gov.bcb.pix';
-        const chaveFormatada = tipoChave + String(chaveLimpa.length).padStart(2, '0') + chaveLimpa;
-        const merchantInfo = gui + chaveFormatada;
-        payload += criarCampo('26', merchantInfo);
-        payload += '52040000'; // MCC
-        payload += '5303986'; // BRL
-        payload += criarCampo('54', valor.toFixed(2));
-        payload += '5802BR';
-        payload += criarCampo('59', nomeLimpo);
-        payload += criarCampo('60', cidadeLimpa);
-        // Campo 62 com referência '***'
-        const ref = '***';
-        const campo05 = criarCampo('05', ref);
-        payload += criarCampo('62', campo05);
-        // CRC16
-        const crc = crc16(payload + '6304');
-        payload += '6304' + crc;
-        return payload;
+        return crc.toString(16).toUpperCase().padStart(4, '0');
       }
 
-      // ========== FUNÇÃO PARA GERAR QR CODE ==========
-      function gerarQRCode(texto, elemento) {
-        // Usa a API do qrserver.com
-        const url = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(texto);
-        const img = document.createElement('img');
-        img.src = url;
-        img.alt = 'QR Code PIX';
-        img.style.width = '200px';
-        img.style.height = '200px';
-        img.onerror = function() {
-          elemento.innerHTML = '<span class="erro">❌ Erro ao carregar QR Code.</span>';
-        };
+      function criarCampo(id, valor) {
+        const str = String(valor);
+        const len = String(str.length).padStart(2, '0');
+        return id + len + str;
+      }
+
+      function limparTexto(texto, max) {
+        return texto
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-zA-Z0-9 ]/g, '')
+          .trim()
+          .substring(0, max) || 'Studio';
+      }
+
+      const nomeLimpo = limparTexto(nome, 23);
+      const cidadeLimpa = limparTexto(cidade, 15);
+      const chaveLimpa = chave.replace(/\D/g, '');
+      const tipoChave = chaveLimpa.length === 14 ? '02' : '01';
+
+      let payload = '000201';
+      const gui = '0014br.gov.bcb.pix';
+      const chaveFormatada = tipoChave + String(chaveLimpa.length).padStart(2, '0') + chaveLimpa;
+      const merchantInfo = gui + chaveFormatada;
+      payload += criarCampo('26', merchantInfo);
+      payload += '52040000';
+      payload += '5303986';
+      payload += criarCampo('54', valor.toFixed(2));
+      payload += '5802BR';
+      payload += criarCampo('59', nomeLimpo);
+      payload += criarCampo('60', cidadeLimpa);
+      // Campo 62 com referência vazia (para a Caixa funcionar)
+      payload += '6200';
+      const crc = crc16(payload + '6304');
+      payload += '6304' + crc;
+      return payload;
+    }
+
+    // ========== FUNÇÃO PARA GERAR QR CODE LOCALMENTE ==========
+    function gerarQRCodeLocal(texto, elemento) {
+      // Verifica se a biblioteca QRCode está disponível
+      if (typeof QRCode === 'undefined') {
+        elemento.innerHTML = '<span class="erro">Biblioteca QRCode não carregada. Recarregue.</span>';
+        return false;
+      }
+      try {
+        // Limpa o elemento
         elemento.innerHTML = '';
-        elemento.appendChild(img);
+        // Cria o QR Code
+        new QRCode(elemento, {
+          text: texto,
+          width: 200,
+          height: 200,
+          colorDark: '#000000',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.H
+        });
         return true;
+      } catch (e) {
+        elemento.innerHTML = '<span class="erro">Erro ao gerar QR Code: ' + e.message + '</span>';
+        console.error(e);
+        return false;
+      }
+    }
+
+    // ========== CARREGAR DADOS ==========
+    document.addEventListener('DOMContentLoaded', function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      let valor = urlParams.get('valor') || '0.00';
+      valor = valor.replace(',', '.');
+      const cliente = decodeURIComponent(urlParams.get('cliente') || 'Cliente');
+      const chavePix = urlParams.get('chave') || '59591030000162';
+      const nomePix = urlParams.get('nome') || 'Syanne Waleska Gomes dos Santos';
+
+      document.getElementById('clienteNome').textContent = 'Olá, ' + cliente + '!';
+      document.getElementById('valorPix').textContent = 'R$ ' + valor.replace('.', ',');
+
+      const valorNumerico = parseFloat(valor);
+      const codigoPixEl = document.getElementById('codigoPix');
+      const qrCodeEl = document.getElementById('qrCode');
+
+      if (isNaN(valorNumerico) || valorNumerico <= 0) {
+        codigoPixEl.textContent = '❌ Valor inválido.';
+        qrCodeEl.innerHTML = '<span class="erro">Valor inválido</span>';
+        return;
       }
 
-      // ========== CARREGAR DADOS ==========
-      document.addEventListener('DOMContentLoaded', function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        let valor = urlParams.get('valor') || '0.00';
-        valor = valor.replace(',', '.');
-        const cliente = decodeURIComponent(urlParams.get('cliente') || 'Cliente');
-        const chavePix = urlParams.get('chave') || '59591030000162';
-        const nomePix = urlParams.get('nome') || 'Syanne Waleska Gomes dos Santos';
-
-        document.getElementById('clienteNome').textContent = 'Olá, ' + cliente + '!';
-        document.getElementById('valorPix').textContent = 'R$ ' + valor.replace('.', ',');
-
-        const valorNumerico = parseFloat(valor);
-        const codigoPixEl = document.getElementById('codigoPix');
-        const qrCodeEl = document.getElementById('qrCode');
-
-        if (isNaN(valorNumerico) || valorNumerico <= 0) {
-          codigoPixEl.textContent = '❌ Valor inválido.';
-          qrCodeEl.innerHTML = '<span class="erro">Valor inválido</span>';
-          return;
+      // ===== TENTA GERAR PAYLOAD COM BIBLIOTECA QRCODEPIX =====
+      let payload = null;
+      try {
+        if (typeof QRCodePix !== 'undefined' && QRCodePix.generate) {
+          payload = QRCodePix.generate({
+            pixKey: chavePix,
+            merchantName: nomePix,
+            amount: valorNumerico.toFixed(2),
+            city: 'Joinville'
+          });
         }
+      } catch (e) {
+        console.warn('QRCodePix falhou:', e);
+      }
 
-        // ===== TENTA USAR BIBLIOTECA QRCODEPIX =====
-        let payload = null;
-        try {
-          if (typeof QRCodePix !== 'undefined' && QRCodePix.generate) {
-            payload = QRCodePix.generate({
-              pixKey: chavePix,
-              merchantName: nomePix,
-              amount: valorNumerico.toFixed(2),
-              city: 'Joinville'
-            });
+      // ===== FALLBACK: GERADOR MANUAL =====
+      if (!payload) {
+        payload = gerarPayloadManual(chavePix, nomePix, valorNumerico, 'Joinville');
+      }
+
+      if (!payload) {
+        codigoPixEl.textContent = '❌ Erro ao gerar código PIX.';
+        qrCodeEl.innerHTML = '<span class="erro">Erro ao gerar</span>';
+        return;
+      }
+
+      codigoPixEl.textContent = payload;
+
+      // ===== GERAR QR CODE LOCALMENTE =====
+      const sucesso = gerarQRCodeLocal(payload, qrCodeEl);
+      if (!sucesso) {
+        // Se falhou, tenta recarregar a biblioteca novamente (usando fallback)
+        setTimeout(function() {
+          if (typeof QRCode === 'undefined') {
+            // Se ainda não carregou, carrega via CDN novamente (mas isso já está no head)
+            // Apenas mostra uma mensagem
+            qrCodeEl.innerHTML = '<span class="erro">Não foi possível carregar a biblioteca QRCode. Verifique sua conexão.</span>';
+          } else {
+            gerarQRCodeLocal(payload, qrCodeEl);
           }
-        } catch (e) {
-          console.warn('Biblioteca QRCodePix falhou:', e);
-        }
-
-        // ===== FALLBACK: GERADOR MANUAL =====
-        if (!payload) {
-          console.log('Usando gerador manual para payload');
-          payload = gerarPayloadManual(chavePix, nomePix, valorNumerico, 'Joinville');
-        }
-
-        if (!payload) {
-          codigoPixEl.textContent = '❌ Erro ao gerar código PIX.';
-          qrCodeEl.innerHTML = '<span class="erro">Erro ao gerar</span>';
-          return;
-        }
-
-        codigoPixEl.textContent = payload;
-        gerarQRCode(payload, qrCodeEl);
-      });
-    })();
+        }, 1000);
+      }
+    });
 
     // ========== FUNÇÃO COPIAR ==========
     function copiarPix() {
