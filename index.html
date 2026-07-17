@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Agenda Studio Waleska</title>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="style.css?v=20">
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <header class="header-agenda">
+    <h1>✨ Studio Waleska</h1>
+    <div class="nav-mes">
+      <button class="btn-nav" onclick="mesAnterior()"><i class="fas fa-chevron-left"></i></button>
+      <span id="mesAtual">Julho 2026</span>
+      <button class="btn-nav" onclick="mesProximo()"><i class="fas fa-chevron-right"></i></button>
+    </div>
+  </header>
+
+  <div class="calendar-wrapper">
+    <div class="calendar" id="calendar"></div>
+  </div>
+
+  <!-- Modal de Agendamento -->
+  <div id="modal" class="modal-overlay">
+    <div class="modal-content">
+      <h3><i class="fas fa-calendar-plus"></i> Novo Agendamento</h3>
+      <div class="form-group">
+        <label>Nome da cliente</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="nome" placeholder="Ex: Julia Silva" type="text" list="sugestoesClientes" autocomplete="off" style="flex:3;">
+          <input id="clienteEmoji" placeholder="😊" type="text" maxlength="2" style="flex:1;text-align:center;font-size:24px;">
+        </div>
+        <div class="emoji-picker">
+          <button type="button" onclick="document.getElementById('clienteEmoji').value='😊'">😊</button>
+          <button type="button" onclick="document.getElementById('clienteEmoji').value='🌸'">🌸</button>
+          <button type="button" onclick="document.getElementById('clienteEmoji').value='🌺'">🌺</button>
+          <button type="button" onclick="document.getElementById('clienteEmoji').value='💖'">💖</button>
+          <button type="button" onclick="document.getElementById('clienteEmoji').value='✨'">✨</button>
+          <button type="button" onclick="document.getElementById('clienteEmoji').value='🌟'">🌟</button>
+          <button type="button" onclick="document.getElementById('clienteEmoji').value='⭐'">⭐</button>
+          <button type="button" onclick="document.getElementById('clienteEmoji').value='🌈'">🌈</button>
+          <button type="button" onclick="document.getElementById('clienteEmoji').value='🎀'">🎀</button>
+          <button type="button" onclick="document.getElementById('clienteEmoji').value='💎'">💎</button>
+          <button type="button" onclick="document.getElementById('clienteEmoji').value='🌹'">🌹</button>
+          <button type="button" onclick="document.getElementById('clienteEmoji').value='🍀'">🍀</button>
+          <button type="button" onclick="document.getElementById('clienteEmoji').value='🐱'">🐱</button>
+          <button type="button" onclick="document.getElementById('clienteEmoji').value='🦋'">🦋</button>
+          <button type="button" onclick="document.getElementById('clienteEmoji').value='🌻'">🌻</button>
+          <button type="button" onclick="document.getElementById('clienteEmoji').value='🌷'">🌷</button>
+        </div>
+        <datalist id="sugestoesClientes"></datalist>
+      </div>
+      <div class="form-group">
+        <label>Telefone / WhatsApp</label>
+        <input id="telefone" placeholder="(47) 9 9999-9999" type="tel">
+      </div>
+      <div class="form-group">
+        <label>Data</label>
+        <input id="data" type="date">
+      </div>
+      <div class="form-group">
+        <label>Horário</label>
+        <select id="hora">
+          <option value="">Escolha o horário</option>
+          <option value="08:00">08:00</option>
+          <option value="09:00">09:00</option>
+          <option value="10:00">10:00</option>
+          <option value="11:00">11:00</option>
+          <option value="13:00">13:00</option>
+          <option value="13:30">13:30</option>
+          <option value="14:00">14:00</option>
+          <option value="15:00">15:00</option>
+          <option value="15:30">15:30</option>
+          <option value="16:00">16:00</option>
+          <option value="17:00">17:00</option>
+          <option value="17:30">17:30</option>
+          <option value="18:00">18:00</option>
+          <option value="19:30">19:30</option>
+          <option value="manual" style="color:#d4af37;font-weight:bold;">✏️ Digitar horário manualmente</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Serviço</label>
+        <select id="servico">
+          <option value="">Selecione o serviço</option>
+        </select>
+      </div>
+      <label class="checkbox-whatsapp">
+        <input type="checkbox" id="enviarZap" checked>
+        <span><i class="fab fa-whatsapp"></i> Enviar mensagem automática no WhatsApp</span>
+      </label>
+      <div class="modal-actions">
+        <button class="btn-salvar" onclick="salvar()"><i class="fas fa-check"></i> Agendar</button>
+        <button class="btn-fechar" onclick="fechar()"><i class="fas fa-times"></i> Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Botões flutuantes -->
+  <button id="btnFinanceiro" onclick="abrirFinanceiro()" class="btn-floating btn-financeiro" title="Financeiro">
+    <i class="fas fa-coins"></i>
+  </button>
+  <button id="btnFidelidade" onclick="abrirFidelidade()" class="btn-floating btn-fidelidade" title="Fidelidade">
+    <i class="fas fa-crown"></i>
+  </button>
+
+  <!-- Modal Financeiro -->
+  <div id="modalFinanceiro" class="modal-overlay">
+    <div class="modal-content">
+      <h2><i class="fas fa-coins" style="color:#d4af37;"></i> Financeiro</h2>
+      <div id="resumoFinanceiro" class="resumo-grid"></div>
+      <div class="section">
+        <h3><i class="fas fa-concierge-bell"></i> Serviços</h3>
+        <div id="tabelaPrecos"></div>
+        <div class="add-service">
+          <input id="novoServicoNome" placeholder="Nome do serviço">
+          <input id="novoServicoPreco" placeholder="Preço R$" type="number" step="0.01">
+          <button onclick="adicionarServicoManual()" class="btn-add"><i class="fas fa-plus"></i> Adicionar</button>
+        </div>
+      </div>
+      <div class="section">
+        <h3><i class="fas fa-arrow-down" style="color:#c0392b;"></i> Adicionar Gasto</h3>
+        <input id="gastoDesc" placeholder="Descrição (ex: produtos)">
+        <input id="gastoValor" placeholder="Valor R$" type="number">
+        <button onclick="adicionarGasto()" class="btn-gasto"><i class="fas fa-plus"></i> Adicionar Gasto</button>
+      </div>
+      <div id="listaGastos" class="lista-gastos"></div>
+      <button onclick="fecharFinanceiro()" class="btn-fechar-modal">Fechar</button>
+    </div>
+  </div>
+
+  <!-- Modal Fidelidade -->
+  <div id="modalFidelidade" class="modal-overlay">
+    <div class="modal-content">
+      <h2><i class="fas fa-crown" style="color:#e91e63;"></i> Clientes Fieis</h2>
+      <div style="text-align:right;margin-bottom:10px;">
+        <button onclick="abrirFidelidade()" class="btn-atualizar"><i class="fas fa-sync-alt"></i> Atualizar visitas</button>
+      </div>
+      <div id="listaClientesFidelidade" class="lista-clientes"></div>
+      <button onclick="fecharFidelidade()" class="btn-fechar-modal">Fechar</button>
+    </div>
+  </div>
+
+  <!-- Modal lista do dia -->
+  <div id="modalLista" class="modal-overlay">
+    <div class="modal-content" style="max-width:500px;">
+      <h3 id="tituloLista" style="color:#d4af37;text-align:center;font-family:'Dancing Script',cursive;font-size:24px;"></h3>
+      <div id="conteudoLista"></div>
+      <button onclick="fecharLista()" class="btn-fechar-modal">Fechar</button>
+    </div>
+  </div>
+
+  <script src="admin.js?v=20"></script>
+</body>
+</html>

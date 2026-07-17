@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pagamento - Studio Waleska</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-pix@1.0.0/dist/qrcode-pix.min.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(145deg, #f8f0e7, #f0e6dc);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      background: #fff;
+      max-width: 450px;
+      width: 100%;
+      padding: 35px 25px;
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+      text-align: center;
+    }
+    .logo {
+      font-family: 'Dancing Script', cursive;
+      font-size: 32px;
+      color: #d4af37;
+      margin-bottom: 5px;
+    }
+    .subtitle { color: #888; font-size: 14px; margin-bottom: 20px; }
+    .cliente { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 5px; }
+    .valor { font-size: 36px; font-weight: 700; color: #d4af37; margin: 10px 0 20px; }
+    .qr-code {
+      background: #fff;
+      padding: 20px;
+      border-radius: 16px;
+      display: inline-block;
+      border: 2px solid #f0ece6;
+      margin-bottom: 20px;
+    }
+    #qrCode { width: 200px; height: 200px; display: flex; justify-content: center; align-items: center; }
+    #qrCode img { width: 100% !important; height: 100% !important; }
+    .codigo-area {
+      background: #f5f0ea;
+      padding: 14px;
+      border-radius: 12px;
+      margin: 15px 0;
+      word-break: break-all;
+      font-size: 12px;
+      font-family: monospace;
+      color: #333;
+      max-height: 120px;
+      overflow-y: auto;
+      text-align: left;
+      border: 1px solid #e0ddd8;
+    }
+    .btn-copiar {
+      background: #d4af37;
+      color: #fff;
+      border: none;
+      padding: 14px 30px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: 0.3s;
+      margin-top: 5px;
+    }
+    .btn-copiar:hover { background: #b8942a; transform: scale(1.02); }
+    .btn-copiar.copiado { background: #4caf50; }
+    .instrucoes { color: #777; font-size: 13px; margin-top: 15px; line-height: 1.6; }
+    .instrucoes strong { color: #333; }
+    .footer { margin-top: 20px; font-size: 12px; color: #aaa; border-top: 1px solid #eee; padding-top: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">✨ Studio Waleska</div>
+    <div class="subtitle">Pagamento via PIX</div>
+
+    <div class="cliente" id="clienteNome">Cliente</div>
+    <div class="valor" id="valorPix">R$ 0,00</div>
+
+    <div class="qr-code">
+      <div id="qrCode"></div>
+    </div>
+
+    <div class="codigo-area" id="codigoPix">
+      Aguardando código...
+    </div>
+
+    <button class="btn-copiar" id="btnCopiar" onclick="copiarPix()">
+      📋 Copiar código PIX
+    </button>
+
+    <div class="instrucoes">
+      1. Copie o código acima<br>
+      2. Abra o app do seu banco<br>
+      3. Cole na opção <strong>"PIX Copia e Cola"</strong><br>
+      4. Confirme o pagamento
+    </div>
+
+    <div class="footer">
+      Qualquer dúvida, fale com Waleska pelo WhatsApp
+    </div>
+  </div>
+
+  <script>
+    // ========== LER PARÂMETROS DA URL ==========
+    const urlParams = new URLSearchParams(window.location.search);
+    // Aceita tanto vírgula quanto ponto como separador decimal
+    let valor = urlParams.get('valor') || '0,00';
+    valor = valor.replace(',', '.'); // converte para ponto
+    const cliente = urlParams.get('cliente') || 'Cliente';
+    const chavePix = urlParams.get('chave') || '59591030000162';
+    const nomePix = urlParams.get('nome') || 'Syanne Waleska Gomes dos Santos';
+
+    // Exibe o nome do cliente e o valor
+    document.getElementById('clienteNome').textContent = `Olá, ${decodeURIComponent(cliente)}!`;
+    // Exibe o valor com vírgula para o usuário
+    document.getElementById('valorPix').textContent = `R$ ${valor.replace('.', ',')}`;
+
+    // ========== GERAR PAYLOAD PIX ==========
+    const valorNumerico = parseFloat(valor);
+
+    let payload = '';
+    try {
+      if (!isNaN(valorNumerico) && valorNumerico > 0) {
+        payload = QRCodePix.generate({
+          pixKey: chavePix,
+          merchantName: nomePix,
+          amount: valorNumerico.toFixed(2),
+          city: 'Joinville',
+        });
+      } else {
+        payload = 'Valor inválido.';
+      }
+    } catch (e) {
+      payload = 'Erro ao gerar código PIX. Tente novamente.';
+    }
+
+    // Exibe o código na tela
+    document.getElementById('codigoPix').textContent = payload;
+
+    // ========== GERAR QR CODE ==========
+    try {
+      if (payload && payload !== 'Valor inválido.' && !payload.includes('Erro')) {
+        new QRCode(document.getElementById('qrCode'), {
+          text: payload,
+          width: 200,
+          height: 200,
+          colorDark: '#000000',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.H,
+        });
+      } else {
+        document.getElementById('qrCode').innerHTML = '<p style="font-size:12px;color:#999;">Código indisponível</p>';
+      }
+    } catch (e) {
+      document.getElementById('qrCode').innerHTML = '<p style="font-size:12px;color:#999;">Erro ao gerar QR Code</p>';
+    }
+
+    // ========== FUNÇÃO COPIAR ==========
+    function copiarPix() {
+      const codigo = document.getElementById('codigoPix').textContent;
+      if (!codigo || codigo === 'Aguardando código...' || codigo.includes('Erro') || codigo === 'Valor inválido.') {
+        alert('⚠️ Código PIX indisponível. Tente novamente.');
+        return;
+      }
+
+      navigator.clipboard.writeText(codigo).then(() => {
+        const btn = document.getElementById('btnCopiar');
+        btn.textContent = '✅ Copiado!';
+        btn.classList.add('copiado');
+        setTimeout(() => {
+          btn.textContent = '📋 Copiar código PIX';
+          btn.classList.remove('copiado');
+        }, 3000);
+      }).catch(() => {
+        // Fallback: selecionar e copiar manualmente
+        const textarea = document.createElement('textarea');
+        textarea.value = codigo;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        alert('✅ Código copiado!');
+      });
+    }
+  </script>
+</body>
+</html>
