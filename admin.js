@@ -21,12 +21,13 @@ const CHAVE_PIX = "59591030000162";
 const NOME_PIX = "Syanne Waleska Gomes dos Santos";
 const LINK_MAPS = "https://maps.google.com/?q=Rua+Dom+Greg%C3%B3rio+Warmeling+960,+Joinville,+SC";
 
+// ===== URL DA PÁGINA DE PAGAMENTO (GITHUB PAGES) =====
+const URL_PAGAMENTO = "https://kelvinbr2224-sys.github.io/agenda-waleska/pagamento.html";
+
 // ========== FUNÇÃO PARA SABER SE O SERVIÇO COBRA SINAL ==========
-// Regra: serviços que contêm "manutenção" (case insensitive) NÃO cobram sinal.
 function servicoCobraSinal(nomeServico) {
   if (!nomeServico) return false;
   const nomeLower = nomeServico.toLowerCase();
-  // Se contiver "manutenção", NÃO cobra sinal
   if (nomeLower.includes('manutenção') || nomeLower.includes('manutencao')) {
     return false;
   }
@@ -36,7 +37,6 @@ function servicoCobraSinal(nomeServico) {
 // ========== PREÇOS PADRÃO ==========
 let precos = JSON.parse(localStorage.getItem('precosStudio')) || {};
 
-// Se não houver dados, criar com os padrões
 if (Object.keys(precos).length === 0) {
   const servicosPadrao = [
     'Cílios', 'Manutenção', 'Volume Brasileiro',
@@ -57,13 +57,11 @@ if (Object.keys(precos).length === 0) {
     precos[nome] = { preco, cobraSinal: servicoCobraSinal(nome) };
   });
 } else {
-  // Migração: garantir que cada serviço tenha 'cobraSinal'
   for (let serv in precos) {
     if (typeof precos[serv] === 'number') {
       const preco = precos[serv];
       precos[serv] = { preco, cobraSinal: servicoCobraSinal(serv) };
     } else if (typeof precos[serv] === 'object' && precos[serv].preco !== undefined) {
-      // Já é objeto, mas forçar a regra de manutenção
       precos[serv].cobraSinal = servicoCobraSinal(serv);
     }
   }
@@ -324,7 +322,6 @@ async function carregarNuvem() {
       agendamentos = data.dados || {};
       if (data.precos) {
         precos = data.precos;
-        // Forçar a regra de manutenção
         for (let serv in precos) {
           if (typeof precos[serv] === 'number') {
             const preco = precos[serv];
@@ -500,12 +497,13 @@ function abrirModalAgendamento(data){
 function fechar(){ modal.style.display = "none"; }
 function fecharLista(){ document.getElementById("modalLista").style.display = "none"; }
 
-// ========== WHATSAPP ==========
-function enviarWhatsApp(nome, tel, data, hora, servico){
-  const [a,m,d] = data.split('-');
-  const telLimpo = tel.replace(/\D/g,'');
+// ========== WHATSAPP (COM LINK DE PAGAMENTO) ==========
+function enviarWhatsApp(nome, tel, data, hora, servico) {
+  const [a, m, d] = data.split('-');
+  const telLimpo = tel.replace(/\D/g, '');
   let preco = 0;
   let sinal = 0;
+  
   if (typeof precos[servico] === 'number') {
     preco = precos[servico];
     sinal = servicoCobraSinal(servico) ? (preco * 0.3) : 0;
@@ -513,6 +511,11 @@ function enviarWhatsApp(nome, tel, data, hora, servico){
     preco = precos[servico].preco;
     sinal = (precos[servico].cobraSinal && servicoCobraSinal(servico)) ? (preco * 0.3) : 0;
   }
+
+  // ===== GERA LINK PARA PÁGINA DE PAGAMENTO =====
+  // Usa ponto no valor (ex: 36.00) para compatibilidade com JavaScript
+  const valorFormatado = sinal.toFixed(2);
+  const linkPagamento = `${URL_PAGAMENTO}?valor=${valorFormatado}&cliente=${encodeURIComponent(nome)}`;
 
   let msg = `⭐ *Studio Waleska* ⭐\n\n`;
   msg += `Olá *${nome}*!\n\n`;
@@ -526,11 +529,9 @@ function enviarWhatsApp(nome, tel, data, hora, servico){
   if (sinal > 0) {
     msg += `\n🔒 *Sinal de 30%:* R$ ${sinal.toFixed(2)}\n`;
     msg += `\n📍 *Endereço:* [Clique aqui para ver no Maps](${LINK_MAPS})\n`;
-    msg += `\n📌 *PIX para pagamento do sinal:*\n`;
-    msg += `Chave: ${CHAVE_PIX}\n`;
-    msg += `Titular: ${NOME_PIX}\n`;
-    msg += `Valor: R$ ${sinal.toFixed(2)}\n`;
-    msg += `\n*Copie a chave e o valor acima e cole no app do seu banco.*\n`;
+    msg += `\n💳 *Pagamento do sinal (clique no link abaixo):*\n`;
+    msg += `${linkPagamento}\n`;
+    msg += `\n*Copie o link acima ou clique nele para acessar a página de pagamento.*\n`;
   }
 
   msg += `\n📍 *Studio Waleska - Joinville*\n`;
@@ -544,12 +545,13 @@ function enviarWhatsAppIndividual(data, idx) {
   enviarWhatsApp(ag.nome, ag.telefone, data, ag.hora, ag.servico);
 }
 
-// ========== COPIAR MENSAGEM ==========
+// ========== COPIAR MENSAGEM (COM LINK DE PAGAMENTO) ==========
 function copiarMensagemWhatsApp(data, idx) {
   const ag = agendamentos[data][idx];
-  const [a,m,d] = data.split('-');
+  const [a, m, d] = data.split('-');
   let preco = 0;
   let sinal = 0;
+  
   if (typeof precos[ag.servico] === 'number') {
     preco = precos[ag.servico];
     sinal = servicoCobraSinal(ag.servico) ? (preco * 0.3) : 0;
@@ -557,6 +559,9 @@ function copiarMensagemWhatsApp(data, idx) {
     preco = precos[ag.servico].preco;
     sinal = (precos[ag.servico].cobraSinal && servicoCobraSinal(ag.servico)) ? (preco * 0.3) : 0;
   }
+
+  const valorFormatado = sinal.toFixed(2);
+  const linkPagamento = `${URL_PAGAMENTO}?valor=${valorFormatado}&cliente=${encodeURIComponent(ag.nome)}`;
 
   let msg = `⭐ *Studio Waleska* ⭐\n\n`;
   msg += `Olá *${ag.nome}*!\n\n`;
@@ -570,11 +575,9 @@ function copiarMensagemWhatsApp(data, idx) {
   if (sinal > 0) {
     msg += `\n🔒 *Sinal de 30%:* R$ ${sinal.toFixed(2)}\n`;
     msg += `\n📍 *Endereço:* [Clique aqui para ver no Maps](${LINK_MAPS})\n`;
-    msg += `\n📌 *PIX para pagamento do sinal:*\n`;
-    msg += `Chave: ${CHAVE_PIX}\n`;
-    msg += `Titular: ${NOME_PIX}\n`;
-    msg += `Valor: R$ ${sinal.toFixed(2)}\n`;
-    msg += `\n*Copie a chave e o valor acima e cole no app do seu banco.*\n`;
+    msg += `\n💳 *Pagamento do sinal (clique no link abaixo):*\n`;
+    msg += `${linkPagamento}\n`;
+    msg += `\n*Copie o link acima ou clique nele para acessar a página de pagamento.*\n`;
   }
 
   msg += `\n📍 *Studio Waleska - Joinville*\n`;
@@ -706,7 +709,6 @@ function toggleSinal(data, idx) {
 window.adicionarServicoManual = function() {
   const nome = document.getElementById('novoServicoNome').value.trim();
   const preco = parseFloat(document.getElementById('novoServicoPreco').value);
-  // Decide se cobra sinal baseado na regra
   const cobraSinal = servicoCobraSinal(nome);
 
   if (!nome || isNaN(preco) || preco <= 0) {
@@ -722,7 +724,6 @@ window.adicionarServicoManual = function() {
   atualizarSelectServicos();
   document.getElementById('novoServicoNome').value = '';
   document.getElementById('novoServicoPreco').value = '';
-  // Atualizar checkbox para o próximo
   document.getElementById('novoServicoSinal').checked = cobraSinal;
   alert('✅ Serviço adicionado com sucesso!');
   abrirFinanceiro();
@@ -750,7 +751,6 @@ window.editarServico = function(nomeAntigo) {
     return;
   }
 
-  // Sugerir baseado na regra
   const sugestaoSinal = servicoCobraSinal(nomeLimpo) ? 'sim' : 'não';
   const cobraSinalStr = prompt(`Cobrar sinal de 30%? (Digite "sim" ou "não")`, sugestaoSinal);
   if (cobraSinalStr === null) return;
@@ -779,7 +779,6 @@ window.editarServico = function(nomeAntigo) {
 // ========== ALTERNAR SINAL ==========
 window.toggleSinalServico = function(servico) {
   if (!precos[servico]) return;
-  // Se for objeto, alterna; se for número, converte para objeto
   if (typeof precos[servico] === 'number') {
     const preco = precos[servico];
     precos[servico] = { preco, cobraSinal: !servicoCobraSinal(servico) };
@@ -1028,7 +1027,6 @@ window.atualizarPreco = function(servico) {
   const input = document.getElementById('preco_' + servico.replace(/\s+/g,'_'));
   const novoPreco = parseFloat(input.value);
   if (novoPreco && novoPreco > 0) {
-    // Se for número, converte para objeto
     if (typeof precos[servico] === 'number') {
       const preco = precos[servico];
       precos[servico] = { preco, cobraSinal: servicoCobraSinal(servico) };
