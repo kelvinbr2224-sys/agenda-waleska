@@ -4,10 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Pagamento - Studio Waleska</title>
-  <!-- Biblioteca para gerar payload PIX (mais confiável) -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcode-pix@1.0.0/dist/qrcode-pix.min.js"></script>
-  <!-- Biblioteca para gerar QR Code -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <!-- Usa API do Google Charts para gerar QR Code da chave (opcional) -->
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body {
@@ -28,10 +25,50 @@
       box-shadow: 0 20px 60px rgba(0,0,0,0.12);
       text-align: center;
     }
-    .logo { font-family: 'Dancing Script', cursive; font-size: 32px; color: #d4af37; margin-bottom: 5px; }
-    .subtitle { color: #888; font-size: 14px; margin-bottom: 20px; }
-    .cliente { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 5px; }
-    .valor { font-size: 36px; font-weight: 700; color: #d4af37; margin: 10px 0 20px; }
+    .logo {
+      font-family: 'Dancing Script', cursive;
+      font-size: 32px;
+      color: #d4af37;
+      margin-bottom: 5px;
+    }
+    .subtitle {
+      color: #888;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    .cliente {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 5px;
+    }
+    .valor {
+      font-size: 36px;
+      font-weight: 700;
+      color: #d4af37;
+      margin: 10px 0 20px;
+    }
+    .chave-area {
+      background: #f5f0ea;
+      padding: 14px;
+      border-radius: 12px;
+      margin: 15px 0;
+      word-break: break-all;
+      font-size: 18px;
+      font-family: monospace;
+      color: #333;
+      border: 1px solid #e0ddd8;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+    .chave-area span {
+      display: block;
+      font-size: 12px;
+      font-weight: 400;
+      color: #888;
+      margin-bottom: 4px;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
     .qr-code {
       background: #fff;
       padding: 20px;
@@ -44,22 +81,16 @@
       width: 220px;
       height: 220px;
     }
-    #qrCode { width: 200px; height: 200px; display: flex; justify-content: center; align-items: center; }
-    #qrCode img, #qrCode canvas { max-width: 100%; max-height: 100%; }
-    .codigo-area {
-      background: #f5f0ea;
-      padding: 14px;
-      border-radius: 12px;
-      margin: 15px 0;
-      word-break: break-all;
-      font-size: 12px;
-      font-family: monospace;
-      color: #333;
-      max-height: 150px;
-      overflow-y: auto;
-      text-align: left;
-      border: 1px solid #e0ddd8;
-      user-select: all;
+    #qrCode {
+      width: 200px;
+      height: 200px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #qrCode img {
+      width: 100% !important;
+      height: 100% !important;
     }
     .btn-copiar {
       background: #d4af37;
@@ -74,219 +105,132 @@
       transition: 0.3s;
       margin-top: 5px;
     }
-    .btn-copiar:hover { background: #b8942a; }
-    .btn-copiar.copiado { background: #4caf50; }
-    .instrucoes { color: #777; font-size: 13px; margin-top: 15px; line-height: 1.6; }
-    .instrucoes strong { color: #333; }
-    .footer { margin-top: 20px; font-size: 12px; color: #aaa; border-top: 1px solid #eee; padding-top: 15px; }
-    .erro { color: #c0392b; font-size: 14px; padding: 10px; }
-    .carregando { color: #999; font-size: 14px; padding: 20px; }
+    .btn-copiar:hover {
+      background: #b8942a;
+      transform: scale(1.02);
+    }
+    .btn-copiar.copiado {
+      background: #4caf50;
+    }
+    .instrucoes {
+      color: #777;
+      font-size: 13px;
+      margin-top: 15px;
+      line-height: 1.6;
+    }
+    .instrucoes strong {
+      color: #333;
+    }
+    .footer {
+      margin-top: 20px;
+      font-size: 12px;
+      color: #aaa;
+      border-top: 1px solid #eee;
+      padding-top: 15px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="logo">✨ Studio Waleska</div>
-    <div class="subtitle">Pagamento via PIX</div>
+    <div class="subtitle">Pagamento do sinal</div>
+
     <div class="cliente" id="clienteNome">Cliente</div>
     <div class="valor" id="valorPix">R$ 0,00</div>
-    <div class="qr-code"><div id="qrCode"><span class="carregando">⏳ Gerando QR Code...</span></div></div>
-    <div class="codigo-area" id="codigoPix">⏳ Gerando código PIX...</div>
-    <button class="btn-copiar" id="btnCopiar" onclick="copiarPix()">📋 Copiar código PIX</button>
-    <div class="instrucoes">
-      1. Copie o código acima<br>
-      2. Abra o app do seu banco<br>
-      3. Cole na opção <strong>"PIX Copia e Cola"</strong><br>
-      4. Confirme o pagamento
+
+    <!-- Exibe a chave PIX -->
+    <div class="chave-area" id="chavePix">
+      <span>📌 Copie a chave abaixo:</span>
+      <span id="chaveValor">59591030000162</span>
     </div>
-    <div class="footer">Qualquer dúvida, fale com Waleska pelo WhatsApp</div>
+
+    <!-- QR Code da chave (opcional, mas útil) -->
+    <div class="qr-code">
+      <div id="qrCode"><span style="color:#999;">⏳ Carregando...</span></div>
+    </div>
+
+    <button class="btn-copiar" id="btnCopiar" onclick="copiarChave()">
+      📋 Copiar chave PIX
+    </button>
+
+    <div class="instrucoes">
+      1. Clique em <strong>"Copiar chave PIX"</strong><br>
+      2. Abra o app do seu banco<br>
+      3. Escolha <strong>"Pagar com PIX"</strong><br>
+      4. Cole a chave e confirme o <strong>valor acima</strong>
+    </div>
+
+    <div class="footer">
+      Qualquer dúvida, fale com Waleska pelo WhatsApp
+    </div>
   </div>
 
   <script>
-    // ============================================================
-    //  FALLBACK MANUAL (CASO A BIBLIOTECA QRCODEPIX NÃO CARREGUE)
-    // ============================================================
-    function gerarPayloadManual(chave, nome, valor, cidade) {
-      function limpar(texto) {
-        return texto
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-zA-Z0-9 ]/g, '')
-          .trim()
-          .substring(0, 25) || 'Studio';
-      }
+    // ===== LER PARÂMETROS =====
+    const urlParams = new URLSearchParams(window.location.search);
+    let valor = urlParams.get('valor') || '0.00';
+    valor = valor.replace(',', '.');
+    const cliente = decodeURIComponent(urlParams.get('cliente') || 'Cliente');
+    const chavePix = urlParams.get('chave') || '59591030000162';
 
-      function crc16(hex) {
-        let crc = 0xFFFF;
-        for (let i = 0; i < hex.length; i += 2) {
-          const byte = parseInt(hex.substr(i, 2), 16);
-          crc ^= byte << 8;
-          for (let j = 0; j < 8; j++) {
-            if (crc & 0x8000) {
-              crc = (crc << 1) ^ 0x1021;
-            } else {
-              crc = crc << 1;
-            }
-            crc &= 0xFFFF;
-          }
-        }
-        return crc.toString(16).toUpperCase().padStart(4, '0');
-      }
+    // ===== EXIBIR DADOS =====
+    document.getElementById('clienteNome').textContent = 'Olá, ' + cliente + '!';
+    document.getElementById('valorPix').textContent = 'R$ ' + parseFloat(valor).toFixed(2).replace('.', ',');
+    document.getElementById('chaveValor').textContent = chavePix;
 
-      function campo(id, valor) {
-        const str = String(valor);
-        const len = String(str.length).padStart(2, '0');
-        return id + len + str;
-      }
-
-      const chaveLimpa = chave.replace(/\D/g, '');
-      const tipoChave = chaveLimpa.length === 14 ? '02' : '01';
-      const nomeLimpo = limpar(nome);
-      const cidadeLimpa = limpar(cidade).substring(0, 15);
-
-      let payload = '000201';
-      const gui = '0014br.gov.bcb.pix';
-      const chaveFormatada = tipoChave + String(chaveLimpa.length).padStart(2, '0') + chaveLimpa;
-      const merchantInfo = gui + chaveFormatada;
-      payload += campo('26', merchantInfo);
-      payload += '52040000';
-      payload += '5303986';
-      payload += campo('54', valor.toFixed(2));
-      payload += '5802BR';
-      payload += campo('59', nomeLimpo);
-      payload += campo('60', cidadeLimpa);
-      // Campo 62 vazio para compatibilidade com Caixa
-      payload += '6200';
-      const crc = crc16(payload + '6304');
-      payload += '6304' + crc;
-      return payload;
+    // ===== GERAR QR CODE DA CHAVE (USANDO API DO GOOGLE) =====
+    function gerarQRCode(texto) {
+      const qrContainer = document.getElementById('qrCode');
+      const url = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(texto);
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = 'QR Code PIX';
+      img.style.width = '200px';
+      img.style.height = '200px';
+      img.onerror = function() {
+        qrContainer.innerHTML = '<span style="color:#999;">QR Code indisponível</span>';
+      };
+      qrContainer.innerHTML = '';
+      qrContainer.appendChild(img);
     }
 
-    // ============================================================
-    //  FUNÇÃO PRINCIPAL
-    // ============================================================
-    function gerarPayload(chave, nome, valor, cidade) {
-      // Tenta usar a biblioteca QRCodePix (mais confiável)
-      try {
-        if (typeof QRCodePix !== 'undefined' && QRCodePix.generate) {
-          const payload = QRCodePix.generate({
-            pixKey: chave,
-            merchantName: nome,
-            amount: valor.toFixed(2),
-            city: cidade
-          });
-          if (payload && payload.length > 10) {
-            return payload;
-          }
-        }
-      } catch (e) {
-        console.warn('QRCodePix falhou, usando fallback manual.', e);
-      }
-      // Fallback manual
-      return gerarPayloadManual(chave, nome, valor, cidade);
-    }
+    gerarQRCode(chavePix);
 
-    // ============================================================
-    //  GERAR QR CODE
-    // ============================================================
-    function gerarQRCode(texto, elemento) {
-      if (typeof QRCode === 'undefined') {
-        elemento.innerHTML = '<span class="erro">Biblioteca QRCode não carregada.</span>';
-        return false;
-      }
-      try {
-        elemento.innerHTML = '';
-        new QRCode(elemento, {
-          text: texto,
-          width: 200,
-          height: 200,
-          colorDark: '#000000',
-          colorLight: '#ffffff',
-          correctLevel: QRCode.CorrectLevel.H
-        });
-        return true;
-      } catch (e) {
-        elemento.innerHTML = '<span class="erro">Erro: ' + e.message + '</span>';
-        return false;
-      }
-    }
-
-    // ============================================================
-    //  CARREGAR DADOS
-    // ============================================================
-    document.addEventListener('DOMContentLoaded', function() {
-      const urlParams = new URLSearchParams(window.location.search);
-      let valor = urlParams.get('valor') || '0.00';
-      valor = valor.replace(',', '.');
-      const cliente = decodeURIComponent(urlParams.get('cliente') || 'Cliente');
-      // CHAVE PIX PADRÃO: CNPJ 59591030000162
-      const chavePix = urlParams.get('chave') || '59591030000162';
-      const nomePix = urlParams.get('nome') || 'Syanne Waleska Gomes dos Santos';
-
-      document.getElementById('clienteNome').textContent = 'Olá, ' + cliente + '!';
-      document.getElementById('valorPix').textContent = 'R$ ' + valor.replace('.', ',');
-
-      const valorNumerico = parseFloat(valor);
-      const codigoEl = document.getElementById('codigoPix');
-      const qrEl = document.getElementById('qrCode');
-
-      if (isNaN(valorNumerico) || valorNumerico <= 0) {
-        codigoEl.textContent = '❌ Valor inválido.';
-        qrEl.innerHTML = '<span class="erro">Valor inválido</span>';
-        return;
-      }
-
-      // Gera payload
-      const payload = gerarPayload(chavePix, nomePix, valorNumerico, 'Joinville');
-      if (!payload) {
-        codigoEl.textContent = '❌ Erro ao gerar código PIX.';
-        qrEl.innerHTML = '<span class="erro">Erro</span>';
-        return;
-      }
-
-      codigoEl.textContent = payload;
-      gerarQRCode(payload, qrEl);
-
-      // Exibe no console para depuração
-      console.log('✅ Payload PIX gerado:');
-      console.log(payload);
-      console.log('Tamanho:', payload.length);
-    });
-
-    // ============================================================
-    //  COPIAR
-    // ============================================================
-    function copiarPix() {
-      const codigo = document.getElementById('codigoPix').textContent;
-      if (!codigo || codigo.includes('⏳') || codigo.includes('Erro') || codigo.includes('inválido')) {
-        alert('⚠️ Código PIX indisponível.');
+    // ===== COPIAR CHAVE =====
+    function copiarChave() {
+      const chave = document.getElementById('chaveValor').textContent;
+      if (!chave) {
+        alert('⚠️ Chave PIX indisponível.');
         return;
       }
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(codigo).then(() => {
+        navigator.clipboard.writeText(chave).then(() => {
           const btn = document.getElementById('btnCopiar');
           btn.textContent = '✅ Copiado!';
           btn.classList.add('copiado');
           setTimeout(() => {
-            btn.textContent = '📋 Copiar código PIX';
+            btn.textContent = '📋 Copiar chave PIX';
             btn.classList.remove('copiado');
           }, 3000);
-        }).catch(() => copiarFallback(codigo));
+        }).catch(() => {
+          copiarFallback(chave);
+        });
       } else {
-        copiarFallback(codigo);
+        copiarFallback(chave);
       }
     }
 
-    function copiarFallback(codigo) {
+    function copiarFallback(chave) {
       const textarea = document.createElement('textarea');
-      textarea.value = codigo;
+      textarea.value = chave;
       document.body.appendChild(textarea);
       textarea.select();
       try {
         document.execCommand('copy');
-        alert('✅ Código copiado!');
+        alert('✅ Chave copiada!');
       } catch (e) {
-        alert('⚠️ Selecione o código acima e copie manualmente.');
+        alert('⚠️ Selecione a chave acima e copie manualmente.');
       }
       document.body.removeChild(textarea);
     }
