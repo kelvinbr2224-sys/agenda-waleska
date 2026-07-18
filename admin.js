@@ -495,7 +495,7 @@ function abrirModalAgendamento(data){
 function fechar(){ modal.style.display = "none"; }
 function fecharLista(){ document.getElementById("modalLista").style.display = "none"; }
 
-// ========== WHATSAPP ==========
+// ========== WHATSAPP (sem payload PIX) ==========
 function enviarWhatsApp(nome, tel, data, hora, servico) {
   const [a, m, d] = data.split('-');
   const telLimpo = tel.replace(/\D/g, '');
@@ -511,7 +511,7 @@ function enviarWhatsApp(nome, tel, data, hora, servico) {
   }
 
   const valorFormatado = sinal.toFixed(2);
-  const linkPagamento = `${URL_PAGAMENTO}?valor=${valorFormatado}&cliente=${encodeURIComponent(nome)}`;
+  const linkPagamento = `${URL_PAGAMENTO}?valor=${valorFormatado}&cliente=${encodeURIComponent(nome)}&chave=${CHAVE_PIX}`;
 
   let msg = `⭐ *Studio Waleska* ⭐\n\n`;
   msg += `Olá *${nome}*!\n\n`;
@@ -556,7 +556,7 @@ function copiarMensagemWhatsApp(data, idx) {
   }
 
   const valorFormatado = sinal.toFixed(2);
-  const linkPagamento = `${URL_PAGAMENTO}?valor=${valorFormatado}&cliente=${encodeURIComponent(ag.nome)}`;
+  const linkPagamento = `${URL_PAGAMENTO}?valor=${valorFormatado}&cliente=${encodeURIComponent(ag.nome)}&chave=${CHAVE_PIX}`;
 
   let msg = `⭐ *Studio Waleska* ⭐\n\n`;
   msg += `Olá *${ag.nome}*!\n\n`;
