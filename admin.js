@@ -19,8 +19,7 @@ const SENHA_DOMINGO = String.fromCharCode(100, 111, 109, 105, 110, 103, 111);
 // ========== DADOS DO ESTÚDIO ==========
 const CHAVE_PIX = "59591030000162";
 const NOME_PIX = "Syanne Waleska Gomes dos Santos";
-
-// ===== URL DA PÁGINA DE PAGAMENTO =====
+const LINK_MAPS = "https://maps.google.com/?q=Rua+Dom+Greg%C3%B3rio+Warmeling+960,+Joinville,+SC";
 const URL_PAGAMENTO = "https://kelvinbr2224-sys.github.io/agenda-waleska/pagamento.html";
 
 // ========== FUNÇÃO PARA SABER SE O SERVIÇO COBRA SINAL ==========
@@ -525,7 +524,6 @@ function enviarWhatsApp(nome, tel, data, hora, servico) {
 
   if (sinal > 0) {
     msg += `\n🔒 *Sinal de 30%:* R$ ${sinal.toFixed(2)}\n`;
-    // ENDEREÇO REMOVIDO
     msg += `\n💳 *Pagamento do sinal (clique no link abaixo):*\n`;
     msg += ` ${linkPagamento}\n`;
     msg += `\n*Copie o link acima ou clique nele para acessar a página de pagamento.*\n`;
