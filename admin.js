@@ -1,6 +1,6 @@
 // ========== CONFIGURAÇÃO FIREBASE ==========
 const firebaseConfig = {
-  apiKey: "AIzaSyCTmSo1Cc_hchf2uZ4kHNtg4uN_Ukd7wgM",
+  apiKey: "AIzaSyBAXpityWhwEMjUzRtt9cKKnRcK03uw79Y",
   authDomain: "estetica-3dd35.firebaseapp.com",
   projectId: "estetica-3dd35",
   storageBucket: "estetica-3dd35.appspot.com",
