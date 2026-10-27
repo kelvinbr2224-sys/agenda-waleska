@@ -17,7 +17,7 @@ body {
 .tela-bloqueio {
   position: fixed;
   inset: 0;
-  background: linear-gradient(145deg, #d4af37, #b8942a);
+  background: linear-gradient(145deg, #2b241a 0%, #1a1611 100%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -25,49 +25,67 @@ body {
 }
 .caixa-senha {
   background: #fff;
-  padding: 40px 30px;
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  padding: 44px 32px;
+  border-radius: 24px;
+  box-shadow: 0 25px 70px rgba(0,0,0,0.45);
   text-align: center;
-  max-width: 320px;
+  max-width: 340px;
   width: 90%;
+  position: relative;
+  overflow: hidden;
+}
+.caixa-senha::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #d4af37, #f5d76e, #d4af37);
 }
 .caixa-senha h1 {
   font-family: 'Dancing Script', cursive;
-  color: #d4af37;
-  font-size: 40px;
-  margin-bottom: 20px;
+  color: #b8942a;
+  font-size: 44px;
+  margin-bottom: 24px;
+  font-weight: 700;
+  text-shadow: 0 2px 8px rgba(212,175,55,0.15);
 }
 .caixa-senha input {
   width: 100%;
-  padding: 14px;
-  border: 2px solid #ddd;
-  border-radius: 10px;
+  padding: 14px 16px;
+  border: 1.5px solid #e8e0d0;
+  background: #fdfbf7;
+  border-radius: 12px;
   font-size: 16px;
   text-align: center;
-  margin-bottom: 15px;
-  transition: 0.3s;
+  margin-bottom: 16px;
+  transition: all 0.25s;
+  font-family: inherit;
 }
 .caixa-senha input:focus {
   outline: none;
   border-color: #d4af37;
-  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(212,175,55,0.15);
 }
 .caixa-senha button {
   width: 100%;
-  padding: 14px;
-  background: #d4af37;
+  padding: 15px;
+  background: linear-gradient(135deg, #d4af37, #b8942a);
   color: #fff;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   font-weight: 600;
   font-size: 16px;
   cursor: pointer;
-  transition: 0.3s;
+  transition: all 0.25s;
+  letter-spacing: 0.5px;
+  box-shadow: 0 6px 18px rgba(212,175,55,0.35);
 }
 .caixa-senha button:hover {
-  background: #b8942a;
-  transform: scale(1.02);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(212,175,55,0.45);
 }
 
 /* ========== HEADER ========== */
@@ -76,31 +94,69 @@ body {
   margin: 0 auto 20px;
   text-align: center;
 }
+
+.brand-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 6px;
+}
+
+.brand-line-decor {
+  flex: 1;
+  max-width: 90px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #d4af37, transparent);
+  opacity: 0.7;
+}
+
+.brand-icon {
+  width: 32px;
+  height: 32px;
+  color: #d4af37;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 6px rgba(212,175,55,0.25));
+}
+
 .header-agenda h1 {
   font-family: 'Dancing Script', cursive;
-  font-size: 52px;
+  font-size: 46px;
   color: #d4af37;
-  text-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
-  margin-bottom: 10px;
+  text-shadow: 0 4px 20px rgba(212, 175, 55, 0.2);
+  margin: 0;
+  line-height: 1;
+  white-space: nowrap;
 }
+
+.brand-tagline {
+  font-size: 10px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #b8942a;
+  font-weight: 500;
+  margin: 0 0 16px;
+  opacity: 0.85;
+}
+
 .nav-mes {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 20px;
-  background: rgba(255,255,255,0.9);
-  backdrop-filter: blur(10px);
-  padding: 12px 25px;
+  background: #fff;
+  padding: 10px 22px;
   border-radius: 50px;
-  box-shadow: 0 5px 25px rgba(0,0,0,0.08);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  border: 1px solid rgba(212,175,55,0.12);
 }
 .btn-nav {
   background: none;
   border: none;
   color: #d4af37;
-  font-size: 22px;
+  font-size: 20px;
   cursor: pointer;
-  transition: 0.3s;
+  transition: all 0.25s;
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -114,10 +170,11 @@ body {
   transform: scale(1.1);
 }
 #mesAtual {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
-  color: #555;
+  color: #4a4a4a;
   min-width: 150px;
+  text-align: center;
 }
 
 /* ========== CALENDÁRIO ========== */
@@ -127,46 +184,47 @@ body {
 }
 .calendar {
   background: #fff;
-  padding: 25px;
-  border-radius: 20px;
+  padding: 22px;
+  border-radius: 22px;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 8px;
   box-shadow: 0 10px 40px rgba(0,0,0,0.06);
+  border: 1px solid rgba(212,175,55,0.08);
 }
 .dia-semana {
-  background: #d4af37;
-  color: #fff;
-  padding: 12px 5px;
+  background: #faf3e3;
+  color: #b8942a;
+  padding: 10px 4px;
   text-align: center;
-  font-weight: 600;
-  border-radius: 12px;
-  font-size: 13px;
+  font-weight: 700;
+  border-radius: 10px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1.2px;
+  border: 1px solid #f0e4c8;
 }
 .day {
-  background: #fafafa;
-  padding: 10px 5px;
+  background: #fdfbf7;
+  padding: 8px 4px;
   text-align: center;
   cursor: pointer;
   border-radius: 12px;
-  transition: 0.25s;
-  min-height: 80px;
-  max-height: 80px;
+  transition: all 0.2s ease;
+  min-height: 82px;
+  max-height: 82px;
   position: relative;
-  border: 1px solid #eee;
+  border: 1px solid #f5eee2;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 .day:hover {
-  background: #d4af37;
-  color: #fff;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(212,175,55,0.2);
-  border-color: #d4af37;
+  background: #fbf3e0;
+  border-color: #e6d3a3;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(212,175,55,0.15);
 }
 .day.vazio {
   background: transparent;
@@ -174,48 +232,84 @@ body {
   pointer-events: none;
   border: 1px solid transparent;
 }
+
+/* ====== FIM DE SEMANA ====== */
+.day.sabado {
+  background: #eef4fb;
+  border-color: #d5e3f2;
+}
+.day.sabado strong {
+  color: #4a6fa5;
+}
+.day.sabado:hover {
+  background: #e0ecfa;
+  border-color: #a8c4e8;
+}
+
+.day.domingo {
+  background: #fdf0eb;
+  border-color: #f5dcd2;
+}
+.day.domingo strong {
+  color: #b5624a;
+}
+.day.domingo:hover {
+  background: #fbe2d7;
+  border-color: #eebaa4;
+}
+
+/* ====== HOJE (prioridade sobre sábado/domingo) ====== */
 .day.hoje {
-  background: #667eea;
-  color: #fff;
-  border: 3px solid #fff;
-  box-shadow: 0 0 0 2px #667eea;
+  background: #fdfbf7;
+  border: 2px solid #d4af37;
+  box-shadow: 0 0 0 3px rgba(212,175,55,0.12);
 }
 .day.hoje strong {
-  font-size: 18px;
+  font-size: 16px;
+  color: #b8942a;
+  font-weight: 700;
 }
 .day.hoje::after {
   content: 'HOJE';
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: 3px;
+  right: 3px;
   font-size: 7px;
-  background: #fff;
-  color: #667eea;
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-weight: 700;
-}
-.day strong {
-  display: block;
-  font-size: 15px;
-  margin-bottom: 2px;
-  line-height: 1;
-}
-.agendamento-item {
-  font-size: 9px;
   background: #d4af37;
   color: #fff;
   padding: 2px 4px;
   border-radius: 4px;
-  margin-top: 2px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+.day strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4a4a4a;
+  margin-bottom: 3px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+.day:hover strong {
+  color: #b8942a;
+}
+.agendamento-item {
+  font-size: 9px;
+  background: linear-gradient(135deg, #d4af37, #b8942a);
+  color: #fff;
+  padding: 2px 5px;
+  border-radius: 5px;
+  margin-top: 3px;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
   line-height: 1.2;
-  font-weight: 500;
+  font-weight: 600;
   width: 100%;
+  box-shadow: 0 1px 3px rgba(212,175,55,0.3);
 }
 
 /* ========== MODAIS ========== */
@@ -223,7 +317,7 @@ body {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(20, 15, 5, 0.55);
   backdrop-filter: blur(4px);
   justify-content: center;
   align-items: center;
@@ -233,14 +327,26 @@ body {
 }
 .modal-content {
   background: #fff;
-  padding: 30px;
+  padding: 32px 28px;
   width: 100%;
   max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
   border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
   animation: slideUp 0.3s ease;
+  position: relative;
+  border: 1px solid rgba(212,175,55,0.1);
+}
+.modal-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #d4af37, #f5d76e, #d4af37);
+  border-radius: 20px 20px 0 0;
 }
 @keyframes fadeIn {
   from { opacity: 0; }
@@ -251,12 +357,27 @@ body {
   to { transform: translateY(0); opacity: 1; }
 }
 
-.modal-content h2, .modal-content h3 {
+.modal-content > h2,
+.modal-content > h3 {
   font-family: 'Dancing Script', cursive;
-  font-size: 32px;
-  color: #d4af37;
+  font-size: 30px;
+  color: #b8942a;
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  padding-bottom: 14px;
+  position: relative;
+  font-weight: 700;
+}
+.modal-content > h2::after,
+.modal-content > h3::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #d4af37, transparent);
 }
 .modal-content h3 i {
   margin-right: 8px;
@@ -268,23 +389,28 @@ body {
 }
 .form-group label {
   display: block;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  color: #555;
-  margin-bottom: 4px;
+  color: #6b6b6b;
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
 }
 .form-group input, .form-group select {
   width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
+  padding: 12px 14px;
+  border: 1.5px solid #e8e0d0;
+  background: #fdfbf7;
   border-radius: 10px;
   font-size: 15px;
-  transition: 0.3s;
+  transition: all 0.2s;
+  font-family: inherit;
+  color: #333;
 }
 .form-group input:focus, .form-group select:focus {
   outline: none;
   border-color: #d4af37;
-  box-shadow: 0 0 0 3px rgba(212,175,55,0.15);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(212,175,55,0.12);
 }
 
 /* Emoji picker */
@@ -292,20 +418,21 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 6px 0 12px;
+  margin: 8px 0 12px;
   justify-content: center;
 }
 .emoji-picker button {
-  font-size: 26px;
-  background: none;
-  border: 1px solid #eee;
+  font-size: 24px;
+  background: #fdfbf7;
+  border: 1px solid #f0e4c8;
   border-radius: 10px;
   cursor: pointer;
   padding: 4px 10px;
-  transition: 0.2s;
+  transition: all 0.2s;
 }
 .emoji-picker button:hover {
-  background: #f5f0ea;
+  background: #fbf3e0;
+  border-color: #d4af37;
   transform: scale(1.1);
 }
 
@@ -318,7 +445,8 @@ body {
   border-radius: 10px;
   margin: 16px 0;
   cursor: pointer;
-  transition: 0.2s;
+  transition: all 0.2s;
+  border: 1px solid #e0eef7;
 }
 .checkbox-whatsapp:hover {
   background: #e6f2fa;
@@ -341,82 +469,86 @@ body {
 .modal-actions {
   display: flex;
   gap: 10px;
-  margin-top: 15px;
+  margin-top: 18px;
 }
 .modal-actions button {
   flex: 1;
   padding: 14px;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   font-weight: 600;
   font-size: 15px;
   cursor: pointer;
-  transition: 0.3s;
+  transition: all 0.25s;
+  font-family: inherit;
 }
 .btn-salvar {
-  background: #d4af37;
+  background: linear-gradient(135deg, #d4af37, #b8942a);
   color: #fff;
+  box-shadow: 0 6px 16px rgba(212,175,55,0.3);
 }
 .btn-salvar:hover {
-  background: #b8942a;
-  transform: scale(1.02);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(212,175,55,0.4);
 }
 .btn-fechar {
-  background: #ccc;
-  color: #555;
+  background: #ece8e0;
+  color: #6b6b6b;
 }
 .btn-fechar:hover {
-  background: #bbb;
+  background: #e0d9cc;
 }
 
 .btn-fechar-modal {
   width: 100%;
   padding: 14px;
-  background: #999;
-  color: #fff;
+  background: #ece8e0;
+  color: #6b6b6b;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   font-weight: 600;
   font-size: 15px;
   cursor: pointer;
-  transition: 0.3s;
-  margin-top: 15px;
+  transition: all 0.2s;
+  margin-top: 18px;
+  font-family: inherit;
 }
 .btn-fechar-modal:hover {
-  background: #777;
+  background: #e0d9cc;
 }
 
 /* ========== BOTÕES FLUTUANTES ========== */
 .btn-floating {
   position: fixed;
   right: 20px;
-  width: 56px;
-  height: 56px;
+  width: 54px;
+  height: 54px;
   border: none;
-  border-radius: 50%;
-  font-size: 24px;
+  border-radius: 16px;
+  font-size: 22px;
   color: #fff;
   cursor: pointer;
-  box-shadow: 0 6px 25px rgba(0,0,0,0.15);
-  transition: 0.3s;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+  transition: all 0.3s;
   z-index: 999;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .btn-floating:hover {
-  transform: scale(1.08);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.22);
 }
 .btn-financeiro {
   bottom: 90px;
-  background: linear-gradient(145deg, #d4af37, #b8942a);
+  background: linear-gradient(135deg, #d4af37, #b8942a);
 }
 .btn-fidelidade {
   bottom: 20px;
-  background: linear-gradient(145deg, #e91e63, #c2185b);
+  background: linear-gradient(135deg, #e91e63, #ad1457);
 }
 
-/* ========== RESULTADOS FINANCEIROS ========== */
+/* ========== RESUMO FINANCEIRO ========== */
 .resumo-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -424,17 +556,19 @@ body {
   margin-bottom: 20px;
 }
 .resumo-grid > div {
-  padding: 14px;
-  border-radius: 12px;
+  padding: 14px 12px;
+  border-radius: 14px;
   text-align: center;
-  background: #f9f9f9;
+  background: #fff;
+  border: 1px solid #f0e8dc;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
 }
 .resumo-grid strong {
   display: block;
-  font-size: 13px;
-  color: #888;
+  font-size: 11px;
+  color: #8a8a8a;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
 }
 .resumo-grid p {
   font-size: 20px;
@@ -442,19 +576,23 @@ body {
   margin-top: 4px;
 }
 
+/* ========== SEÇÕES ========== */
 .section {
-  margin: 20px 0;
+  margin: 22px 0;
 }
 .section h3 {
-  font-size: 18px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
   font-weight: 600;
-  color: #444;
-  margin-bottom: 10px;
-  border-bottom: 2px solid #eee;
+  color: #8a6d1e;
+  margin-bottom: 12px;
   padding-bottom: 8px;
+  border-bottom: 1px solid #f0e8dc;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
 }
 .section h3 i {
-  margin-right: 8px;
+  margin-right: 6px;
 }
 
 .add-service {
@@ -466,38 +604,54 @@ body {
 }
 .add-service input {
   flex: 1;
-  padding: 10px;
-  border: 1px solid #ddd;
+  padding: 10px 12px;
+  border: 1.5px solid #e8e0d0;
+  background: #fdfbf7;
   border-radius: 8px;
   min-width: 80px;
+  font-family: inherit;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.add-service input:focus {
+  outline: none;
+  border-color: #d4af37;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(212,175,55,0.12);
 }
 .btn-add {
-  background: #d4af37;
+  background: linear-gradient(135deg, #d4af37, #b8942a);
   color: #fff;
   border: none;
   padding: 10px 18px;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
-  transition: 0.2s;
+  transition: all 0.2s;
+  font-family: inherit;
+  box-shadow: 0 4px 12px rgba(212,175,55,0.25);
 }
 .btn-add:hover {
-  background: #b8942a;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(212,175,55,0.35);
 }
 .btn-gasto {
-  background: #c0392b;
+  background: linear-gradient(135deg, #c0392b, #a93226);
   color: #fff;
   border: none;
-  padding: 10px 18px;
+  padding: 12px 18px;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
-  transition: 0.2s;
+  transition: all 0.2s;
   width: 100%;
   margin-top: 8px;
+  font-family: inherit;
+  box-shadow: 0 4px 12px rgba(192,57,43,0.25);
 }
 .btn-gasto:hover {
-  background: #a93226;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(192,57,43,0.35);
 }
 .btn-atualizar {
   background: #2196F3;
@@ -507,7 +661,8 @@ body {
   border-radius: 6px;
   font-size: 12px;
   cursor: pointer;
-  transition: 0.2s;
+  transition: all 0.2s;
+  font-family: inherit;
 }
 .btn-atualizar:hover {
   background: #0b7dda;
@@ -522,22 +677,24 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
-  background: #f9f9f9;
+  padding: 12px 14px;
+  background: #fdfbf7;
   margin: 6px 0;
   border-radius: 10px;
   flex-wrap: wrap;
-  transition: 0.2s;
+  transition: all 0.2s;
+  border: 1px solid #f5eee2;
 }
 .lista-clientes > div:hover, .lista-gastos > div:hover {
-  background: #f0ece6;
+  background: #fbf3e0;
+  border-color: #e6d3a3;
 }
 .lista-clientes .cliente-nome {
   font-weight: 500;
   flex: 2;
 }
 .lista-clientes .cliente-telefone {
-  color: #666;
+  color: #6b6b6b;
   flex: 1;
   font-size: 14px;
 }
@@ -555,7 +712,7 @@ body {
   border-radius: 6px;
   font-size: 12px;
   cursor: pointer;
-  transition: 0.2s;
+  transition: all 0.2s;
 }
 .lista-clientes .cliente-acoes button:hover {
   background: #0b7dda;
@@ -564,15 +721,27 @@ body {
 /* ========== RESPONSIVIDADE ========== */
 @media (max-width: 600px) {
   body { padding: 10px; }
-  .header-agenda h1 { font-size: 38px; }
-  .calendar { padding: 15px; gap: 5px; }
-  .day { min-height: 70px; max-height: 70px; padding: 6px 3px; }
-  .day strong { font-size: 13px; }
-  .agendamento-item { font-size: 7px; padding: 1px 3px; }
-  .modal-content { padding: 20px; }
+
+  .brand-line-decor { display: none; }
+  .brand-icon { width: 26px; height: 26px; }
+  .header-agenda h1 { font-size: 36px; }
+  .brand-tagline { letter-spacing: 3px; font-size: 9px; margin-bottom: 12px; }
+
+  .calendar { padding: 14px; gap: 5px; }
+  .dia-semana { padding: 8px 2px; font-size: 9px; letter-spacing: 0.8px; }
+  .day { min-height: 70px; max-height: 70px; padding: 6px 3px; border-radius: 10px; }
+  .day strong { font-size: 12px; }
+  .day.hoje strong { font-size: 14px; }
+  .agendamento-item { font-size: 7px; padding: 1px 3px; border-radius: 4px; }
+
+  .modal-content { padding: 24px 20px; }
+  .modal-content > h2, .modal-content > h3 { font-size: 24px; margin-bottom: 20px; padding-bottom: 12px; }
+
   .resumo-grid { grid-template-columns: 1fr 1fr; }
-  .btn-floating { width: 48px; height: 48px; font-size: 20px; }
+
+  .btn-floating { width: 48px; height: 48px; font-size: 20px; border-radius: 14px; }
   .btn-financeiro { bottom: 80px; }
   .btn-fidelidade { bottom: 20px; }
+
   .lista-clientes > div, .lista-gastos > div { flex-direction: column; align-items: stretch; gap: 6px; }
 }

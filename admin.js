@@ -14,7 +14,6 @@ const db = firebase.firestore();
 
 // ========== SENHA OFUSCADA ==========
 const SENHA = String.fromCharCode(119, 97, 108, 101, 115, 107, 97, 50, 48, 50, 54);
-const SENHA_DOMINGO = String.fromCharCode(100, 111, 109, 105, 110, 103, 111);
 
 // ========== DADOS DO ESTÚDIO ==========
 const CHAVE_PIX = "59591030000162";
@@ -96,7 +95,28 @@ try {
 } catch(e) { clientes = {}; }
 
 let dataAtual = new Date();
-let domingoLiberado = false;
+
+// ========== FERIADOS ==========
+const feriados = {
+  '2026-01-01': 'Confraternização Universal',
+  '2026-02-16': 'Carnaval (segunda)',
+  '2026-02-17': 'Carnaval (terça)',
+  '2026-04-03': 'Sexta-feira Santa',
+  '2026-04-21': 'Tiradentes',
+  '2026-05-01': 'Dia do Trabalho',
+  '2026-06-04': 'Corpus Christi',
+  '2026-09-07': 'Independência do Brasil',
+  '2026-10-12': 'Nossa Senhora Aparecida',
+  '2026-11-02': 'Finados',
+  '2026-11-15': 'Proclamação da República',
+  '2026-11-20': 'Consciência Negra',
+  '2026-12-25': 'Natal'
+};
+
+try {
+  const salvos = JSON.parse(localStorage.getItem('feriadosStudio'));
+  if (salvos) Object.assign(feriados, salvos);
+} catch(e) {}
 
 // ========== FORÇAR LIMPEZA DE CACHE ==========
 window.addEventListener('pageshow', function(event) {
@@ -403,9 +423,25 @@ function gerarCalendario() {
     divDia.className = "day";
     const dataCompleta = `${ano}-${String(mes+1).padStart(2,"0")}-${String(i).padStart(2,"0")}`;
     const diaSemana = new Date(ano, mes, i).getDay();
+
+    // 🔵 Sábado e 🔴 Domingo — classes de destaque
+    if (diaSemana === 6) divDia.classList.add("sabado");
+    if (diaSemana === 0) divDia.classList.add("domingo");
+
+    // Hoje tem prioridade visual (o CSS de .hoje vem por último)
     if (hoje.getFullYear() === ano && hoje.getMonth() === mes && hoje.getDate() === i) divDia.classList.add("hoje");
-    if (diaSemana === 0) divDia.style.background = '#ffe6e6';
     divDia.innerHTML = `<strong>${i}</strong>`;
+
+    // 🎉 Feriado — badge flutuante
+    if (feriados[dataCompleta]) {
+      const badge = document.createElement("span");
+      badge.innerText = "🎉";
+      badge.title = feriados[dataCompleta];
+      badge.style.cssText = "position:absolute;top:1px;left:2px;font-size:10px;line-height:1;pointer-events:none;";
+      divDia.appendChild(badge);
+      divDia.title = feriados[dataCompleta];
+    }
+
     if (agendamentos[dataCompleta]) {
       agendamentos[dataCompleta].forEach(ag => {
         const agDiv = document.createElement("div");
@@ -426,17 +462,17 @@ function mesProximo(){ dataAtual.setMonth(dataAtual.getMonth()+1); gerarCalendar
 
 // ========== LISTA DO DIA ==========
 function abrirListaDia(data, dia, mes, ano, diaSemana) {
-  if (diaSemana === 0 && !domingoLiberado) {
-    const senha = prompt("Domingo bloqueado! Senha:");
-    if (senha === SENHA_DOMINGO) {
-      domingoLiberado = true;
-    } else {
-      alert("Senha incorreta!");
-      return;
-    }
-  }
   const modalLista = document.getElementById("modalLista");
-  document.getElementById("tituloLista").innerText = `📅 ${String(dia).padStart(2,'0')}/${String(mes).padStart(2,'0')}/${ano}`;
+
+  const nomeFeriado = feriados[data];
+  if (nomeFeriado) {
+    document.getElementById("tituloLista").innerText =
+      `🎉 ${String(dia).padStart(2,'0')}/${String(mes).padStart(2,'0')}/${ano} • ${nomeFeriado}`;
+  } else {
+    document.getElementById("tituloLista").innerText =
+      `📅 ${String(dia).padStart(2,'0')}/${String(mes).padStart(2,'0')}/${ano}`;
+  }
+
   const conteudo = document.getElementById("conteudoLista");
   conteudo.innerHTML = '';
   if (agendamentos[data]) {
@@ -495,7 +531,7 @@ function abrirModalAgendamento(data){
 function fechar(){ modal.style.display = "none"; }
 function fecharLista(){ document.getElementById("modalLista").style.display = "none"; }
 
-// ========== WHATSAPP (sem payload PIX) ==========
+// ========== WHATSAPP ==========
 function enviarWhatsApp(nome, tel, data, hora, servico) {
   const [a, m, d] = data.split('-');
   const telLimpo = tel.replace(/\D/g, '');
@@ -714,13 +750,19 @@ window.adicionarServicoManual = function() {
     return;
   }
   precos[nome] = { preco, cobraSinal };
-  salvarNuvem();
-  atualizarSelectServicos();
+
+  // Limpa os campos
   document.getElementById('novoServicoNome').value = '';
   document.getElementById('novoServicoPreco').value = '';
-  document.getElementById('novoServicoSinal').checked = cobraSinal;
-  alert('✅ Serviço adicionado com sucesso!');
+
+  // Atualiza select de agendamento e recarrega o painel
+  atualizarSelectServicos();
   abrirFinanceiro();
+
+  // Salva (async, não precisa await para a UI)
+  salvarNuvem();
+
+  alert('✅ Serviço adicionado com sucesso!');
 };
 
 // ========== EDITAR SERVIÇO ==========
@@ -728,7 +770,6 @@ window.editarServico = function(nomeAntigo) {
   const info = precos[nomeAntigo];
   if (!info) return;
   let precoAtual = typeof info === 'number' ? info : info.preco;
-  const cobraSinalAtual = typeof info === 'number' ? servicoCobraSinal(nomeAntigo) : info.cobraSinal;
 
   const novoNome = prompt('Novo nome para o serviço:', nomeAntigo);
   if (novoNome === null || novoNome.trim() === '') return;
@@ -1045,4 +1086,21 @@ window.adicionarGasto = function() {
   } else {
     alert("⚠️ Preencha descrição e valor!");
   }
+};
+
+// ========== FERIADOS PERSONALIZADOS ==========
+window.adicionarFeriado = function() {
+  const data = prompt('Data do feriado (formato AAAA-MM-DD):');
+  if (!data || !/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+    alert('⚠️ Formato inválido. Use AAAA-MM-DD (ex: 2026-08-15)');
+    return;
+  }
+  const nome = prompt('Nome do feriado:');
+  if (!nome) return;
+  feriados[data] = nome.trim();
+  const personalizados = JSON.parse(localStorage.getItem('feriadosStudio')) || {};
+  personalizados[data] = nome.trim();
+  localStorage.setItem('feriadosStudio', JSON.stringify(personalizados));
+  gerarCalendario();
+  alert('✅ Feriado cadastrado!');
 };
