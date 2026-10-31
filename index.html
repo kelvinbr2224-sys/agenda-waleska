@@ -9,7 +9,23 @@
   <title>Agenda Studio Waleska</title>
   <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <link rel="stylesheet" href="style.css?v=21">
+  <link rel="stylesheet" href="style.css?v=22">
+  <script>
+    /* ===== Aplica cores salvas ANTES da renderização (evita "flash") ===== */
+    (function() {
+      try {
+        var c = JSON.parse(localStorage.getItem('coresStudio'));
+        if (c) {
+          var r = document.documentElement;
+          if (c.bg1) r.style.setProperty('--bg-color-1', c.bg1);
+          if (c.bg2) r.style.setProperty('--bg-color-2', c.bg2);
+          if (c.accent) r.style.setProperty('--accent', c.accent);
+          if (c.accentDark) r.style.setProperty('--accent-dark', c.accentDark);
+          if (c.accentLight) r.style.setProperty('--accent-light', c.accentLight);
+        }
+      } catch(e) {}
+    })();
+  </script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
@@ -120,11 +136,14 @@
   <button id="btnFidelidade" onclick="abrirFidelidade()" class="btn-floating btn-fidelidade" title="Fidelidade">
     <i class="fas fa-crown"></i>
   </button>
+  <button id="btnPersonalizar" onclick="abrirPersonalizacao()" class="btn-floating btn-personalizar" title="Personalizar cores">
+    <i class="fas fa-palette"></i>
+  </button>
 
   <!-- Modal Financeiro -->
   <div id="modalFinanceiro" class="modal-overlay">
     <div class="modal-content">
-      <h2><i class="fas fa-coins" style="color:#d4af37;"></i> Financeiro</h2>
+      <h2><i class="fas fa-coins" style="color:var(--accent);"></i> Financeiro</h2>
       <div id="resumoFinanceiro" class="resumo-grid"></div>
       <div class="section">
         <h3><i class="fas fa-concierge-bell"></i> Serviços</h3>
@@ -161,12 +180,68 @@
   <!-- Modal lista do dia -->
   <div id="modalLista" class="modal-overlay">
     <div class="modal-content" style="max-width:500px;">
-      <h3 id="tituloLista" style="color:#d4af37;text-align:center;font-family:'Dancing Script',cursive;font-size:24px;"></h3>
+      <h3 id="tituloLista" style="color:var(--accent);text-align:center;font-family:'Dancing Script',cursive;font-size:24px;"></h3>
       <div id="conteudoLista"></div>
       <button onclick="fecharLista()" class="btn-fechar-modal">Fechar</button>
     </div>
   </div>
 
-  <script src="admin.js?v=3"></script>
+  <!-- ===== Modal Personalizar Cores ===== -->
+  <div id="modalPersonalizar" class="modal-overlay">
+    <div class="modal-content">
+      <h2><i class="fas fa-palette" style="color:var(--accent);"></i> Personalizar Agenda</h2>
+
+      <p style="text-align:center;font-size:13px;color:#888;margin-bottom:18px;">
+        Escolha um tema pronto ou personalize do seu jeito 💅
+      </p>
+
+      <div class="preset-grid">
+        <button class="preset-btn" onclick="aplicarPreset('classico')"
+          style="background:linear-gradient(135deg,#f8f0e7,#f0e6dc);color:#b8942a;border-color:#d4af37;">Clássico</button>
+        <button class="preset-btn" onclick="aplicarPreset('rosa')"
+          style="background:linear-gradient(135deg,#fdf2f5,#f9dbe5);color:#ad1457;border-color:#e91e63;">Rosa</button>
+        <button class="preset-btn" onclick="aplicarPreset('azul')"
+          style="background:linear-gradient(135deg,#eef4fb,#dce9f7);color:#1565c0;border-color:#2196F3;">Azul</button>
+        <button class="preset-btn" onclick="aplicarPreset('lavanda')"
+          style="background:linear-gradient(135deg,#f3effa,#e5dbf5);color:#6a1b9a;border-color:#9c27b0;">Lavanda</button>
+        <button class="preset-btn" onclick="aplicarPreset('verde')"
+          style="background:linear-gradient(135deg,#eef7ef,#dbeedc);color:#2e7d32;border-color:#4caf50;">Verde</button>
+        <button class="preset-btn" onclick="aplicarPreset('pessego')"
+          style="background:linear-gradient(135deg,#fef3eb,#fce0cf);color:#e64a19;border-color:#ff7043;">Pêssego</button>
+      </div>
+
+      <h3 style="font-size:16px;font-family:'Poppins',sans-serif;text-transform:uppercase;letter-spacing:1px;color:var(--accent-dark);border:none;padding:0;margin:0 0 12px;">
+        <i class="fas fa-sliders-h"></i> Personalizado
+      </h3>
+
+      <div class="cor-picker-group">
+        <label for="corBg1">Cor de fundo (topo)</label>
+        <input type="color" id="corBg1" value="#f8f0e7" oninput="aplicarCorManual()">
+      </div>
+      <div class="cor-picker-group">
+        <label for="corBg2">Cor de fundo (base)</label>
+        <input type="color" id="corBg2" value="#f0e6dc" oninput="aplicarCorManual()">
+      </div>
+      <div class="cor-picker-group">
+        <label for="corAccent">Cor de destaque</label>
+        <input type="color" id="corAccent" value="#d4af37" oninput="aplicarCorManual()">
+      </div>
+
+      <p style="font-size:11px;color:#999;text-align:center;margin:10px 0;">
+        💡 Dica: use cores claras para melhor leitura
+      </p>
+
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button onclick="restaurarCoresPadrao()" class="btn-fechar" style="flex:1;padding:12px;border-radius:12px;font-weight:600;cursor:pointer;">
+          <i class="fas fa-undo"></i> Restaurar
+        </button>
+        <button onclick="fecharPersonalizacao()" class="btn-salvar" style="flex:1;padding:12px;border-radius:12px;font-weight:600;cursor:pointer;">
+          <i class="fas fa-check"></i> Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin.js?v=4"></script>
 </body>
 </html>

@@ -15,6 +15,111 @@ const db = firebase.firestore();
 // ========== SENHA OFUSCADA ==========
 const SENHA = String.fromCharCode(119, 97, 108, 101, 115, 107, 97, 50, 48, 50, 54);
 
+// ========== PERSONALIZAÇÃO DE CORES ==========
+const CORES_PADRAO = {
+  bg1: '#f8f0e7',
+  bg2: '#f0e6dc',
+  accent: '#d4af37',
+  accentDark: '#b8942a',
+  accentLight: '#f5d76e'
+};
+
+const PRESETS_CORES = {
+  classico: { bg1: '#f8f0e7', bg2: '#f0e6dc', accent: '#d4af37', accentDark: '#b8942a', accentLight: '#f5d76e' },
+  rosa:     { bg1: '#fdf2f5', bg2: '#f9dbe5', accent: '#e91e63', accentDark: '#ad1457', accentLight: '#f48fb1' },
+  azul:     { bg1: '#eef4fb', bg2: '#dce9f7', accent: '#2196F3', accentDark: '#1565c0', accentLight: '#64b5f6' },
+  lavanda:  { bg1: '#f3effa', bg2: '#e5dbf5', accent: '#9c27b0', accentDark: '#6a1b9a', accentLight: '#ce93d8' },
+  verde:    { bg1: '#eef7ef', bg2: '#dbeedc', accent: '#4caf50', accentDark: '#2e7d32', accentLight: '#81c784' },
+  pessego:  { bg1: '#fef3eb', bg2: '#fce0cf', accent: '#ff7043', accentDark: '#e64a19', accentLight: '#ffab91' }
+};
+
+let coresStudio = (function() {
+  try {
+    const salvas = JSON.parse(localStorage.getItem('coresStudio'));
+    return salvas ? { ...CORES_PADRAO, ...salvas } : { ...CORES_PADRAO };
+  } catch(e) {
+    return { ...CORES_PADRAO };
+  }
+})();
+
+function aplicarCores(cores) {
+  const c = cores || coresStudio;
+  const r = document.documentElement;
+  r.style.setProperty('--bg-color-1', c.bg1);
+  r.style.setProperty('--bg-color-2', c.bg2);
+  r.style.setProperty('--accent', c.accent);
+  r.style.setProperty('--accent-dark', c.accentDark);
+  r.style.setProperty('--accent-light', c.accentLight);
+}
+
+// Utilitários de cor — geram variações a partir da cor de destaque
+function escurecer(hex, percent) {
+  const num = parseInt(hex.replace('#',''), 16);
+  const r = Math.max(0, Math.floor((num >> 16) * (1 - percent/100)));
+  const g = Math.max(0, Math.floor(((num >> 8) & 0x00FF) * (1 - percent/100)));
+  const b = Math.max(0, Math.floor((num & 0x0000FF) * (1 - percent/100)));
+  return '#' + ((r<<16) | (g<<8) | b).toString(16).padStart(6, '0');
+}
+function clarear(hex, percent) {
+  const num = parseInt(hex.replace('#',''), 16);
+  const r = Math.min(255, Math.floor((num >> 16) + (255 - (num >> 16)) * (percent/100)));
+  const g = Math.min(255, Math.floor(((num >> 8) & 0x00FF) + (255 - ((num >> 8) & 0x00FF)) * (percent/100)));
+  const b = Math.min(255, Math.floor((num & 0x0000FF) + (255 - (num & 0x0000FF)) * (percent/100)));
+  return '#' + ((r<<16) | (g<<8) | b).toString(16).padStart(6, '0');
+}
+
+window.aplicarPreset = function(nome) {
+  const preset = PRESETS_CORES[nome];
+  if (!preset) return;
+  coresStudio = { ...preset };
+  aplicarCores(coresStudio);
+  localStorage.setItem('coresStudio', JSON.stringify(coresStudio));
+  atualizarInputsCores();
+  salvarNuvem();
+};
+
+window.aplicarCorManual = function() {
+  const bg1 = document.getElementById('corBg1').value;
+  const bg2 = document.getElementById('corBg2').value;
+  const accent = document.getElementById('corAccent').value;
+  coresStudio.bg1 = bg1;
+  coresStudio.bg2 = bg2;
+  coresStudio.accent = accent;
+  coresStudio.accentDark = escurecer(accent, 25);
+  coresStudio.accentLight = clarear(accent, 35);
+  aplicarCores(coresStudio);
+  localStorage.setItem('coresStudio', JSON.stringify(coresStudio));
+};
+
+window.restaurarCoresPadrao = function() {
+  if (!confirm('Restaurar as cores originais do Studio?')) return;
+  coresStudio = { ...CORES_PADRAO };
+  aplicarCores(coresStudio);
+  atualizarInputsCores();
+  localStorage.setItem('coresStudio', JSON.stringify(coresStudio));
+  salvarNuvem();
+  alert('✅ Cores restauradas!');
+};
+
+function atualizarInputsCores() {
+  const bg1 = document.getElementById('corBg1');
+  const bg2 = document.getElementById('corBg2');
+  const ac = document.getElementById('corAccent');
+  if (bg1) bg1.value = coresStudio.bg1;
+  if (bg2) bg2.value = coresStudio.bg2;
+  if (ac) ac.value = coresStudio.accent;
+}
+
+window.abrirPersonalizacao = function() {
+  atualizarInputsCores();
+  document.getElementById('modalPersonalizar').style.display = 'flex';
+};
+
+window.fecharPersonalizacao = function() {
+  document.getElementById('modalPersonalizar').style.display = 'none';
+  salvarNuvem();
+};
+
 // ========== DADOS DO ESTÚDIO ==========
 const CHAVE_PIX = "59591030000162";
 const NOME_PIX = "Syanne Waleska Gomes dos Santos";
@@ -368,6 +473,13 @@ async function carregarNuvem() {
         salvarClientes();
         atualizarDatalistClientes();
       }
+
+      // 🔽 Carrega cores personalizadas vindas da nuvem
+      if (data.cores) {
+        coresStudio = { ...CORES_PADRAO, ...data.cores };
+        aplicarCores(coresStudio);
+        localStorage.setItem('coresStudio', JSON.stringify(coresStudio));
+      }
     }
     gerarCalendario();
   } catch(e) {
@@ -383,6 +495,7 @@ async function salvarNuvem() {
       precos: precos,
       gastos: gastos,
       clientes: clientes,
+      cores: coresStudio,          // 🔽 salva as cores na nuvem
       atualizado: new Date()
     });
     localStorage.setItem('agendamentosStudio', JSON.stringify(agendamentos));
@@ -424,15 +537,12 @@ function gerarCalendario() {
     const dataCompleta = `${ano}-${String(mes+1).padStart(2,"0")}-${String(i).padStart(2,"0")}`;
     const diaSemana = new Date(ano, mes, i).getDay();
 
-    // 🔵 Sábado e 🔴 Domingo — classes de destaque
     if (diaSemana === 6) divDia.classList.add("sabado");
     if (diaSemana === 0) divDia.classList.add("domingo");
 
-    // Hoje tem prioridade visual (o CSS de .hoje vem por último)
     if (hoje.getFullYear() === ano && hoje.getMonth() === mes && hoje.getDate() === i) divDia.classList.add("hoje");
     divDia.innerHTML = `<strong>${i}</strong>`;
 
-    // 🎉 Feriado — badge flutuante
     if (feriados[dataCompleta]) {
       const badge = document.createElement("span");
       badge.innerText = "🎉";
@@ -488,7 +598,7 @@ function abrirListaDia(data, dia, mes, ano, diaSemana) {
       }
       const emojiDisplay = ag.emoji ? ag.emoji + ' ' : '';
       conteudo.innerHTML += `
-        <div style="padding:12px;background:#f9f9f9;margin:8px 0;border-radius:8px;border-left:4px solid ${ag.sinalPago ? '#4caf50' : '#d4af37'};">
+        <div style="padding:12px;background:#f9f9f9;margin:8px 0;border-radius:8px;border-left:4px solid ${ag.sinalPago ? '#4caf50' : 'var(--accent)'};">
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <div style="flex:1;">
               <strong style="font-size:16px;">⏰ ${ag.hora}</strong> - <strong>${emojiDisplay}${ag.nome}</strong>
@@ -519,7 +629,7 @@ function abrirListaDia(data, dia, mes, ano, diaSemana) {
   } else {
     conteudo.innerHTML += '<p style="text-align:center;padding:30px;color:#999;">📭 Nenhum agendamento para este dia</p>';
   }
-  conteudo.innerHTML += `<button onclick="abrirModalAgendamento('${data}')" style="width:100%;padding:14px;background:#d4af37;color:#fff;border:none;border-radius:8px;margin-top:10px;font-size:16px;font-weight:bold;cursor:pointer;">+ Novo Agendamento</button>`;
+  conteudo.innerHTML += `<button onclick="abrirModalAgendamento('${data}')" style="width:100%;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:8px;margin-top:10px;font-size:16px;font-weight:bold;cursor:pointer;">+ Novo Agendamento</button>`;
   modalLista.style.display = "flex";
 }
 
@@ -703,7 +813,7 @@ function criarModalVisualizacao(){
   m.id = "modalLista";
   m.innerHTML = `
     <div style="background:#fff;padding:20px;border-radius:12px;width:90%;max-width:500px;max-height:80vh;overflow-y:auto;">
-      <h3 id="tituloLista" style="color:#d4af37;text-align:center;font-family:'Dancing Script',cursive;font-size:24px;"></h3>
+      <h3 id="tituloLista" style="color:var(--accent);text-align:center;font-family:'Dancing Script',cursive;font-size:24px;"></h3>
       <div id="conteudoLista"></div>
       <button onclick="fecharLista()" style="width:100%;padding:12px;background:#999;color:#fff;border:none;border-radius:6px;margin-top:15px;cursor:pointer;">Fechar</button>
     </div>
@@ -751,15 +861,11 @@ window.adicionarServicoManual = function() {
   }
   precos[nome] = { preco, cobraSinal };
 
-  // Limpa os campos
   document.getElementById('novoServicoNome').value = '';
   document.getElementById('novoServicoPreco').value = '';
 
-  // Atualiza select de agendamento e recarrega o painel
   atualizarSelectServicos();
   abrirFinanceiro();
-
-  // Salva (async, não precisa await para a UI)
   salvarNuvem();
 
   alert('✅ Serviço adicionado com sucesso!');
@@ -932,10 +1038,10 @@ window.abrirFidelidade = function() {
       const emojiDisplay = c.emoji ? c.emoji + ' ' : '';
       const estrelas = c.visitas >= 10 ? '⭐' : (c.visitas >= 5 ? '🌟' : '');
       html += `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#f9f9f9;margin:6px 0;border-radius:8px;flex-wrap:wrap;border-left:4px solid ${c.visitas >= 10 ? '#d4af37' : (c.visitas >= 5 ? '#2196F3' : '#ddd')};">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#f9f9f9;margin:6px 0;border-radius:8px;flex-wrap:wrap;border-left:4px solid ${c.visitas >= 10 ? 'var(--accent)' : (c.visitas >= 5 ? '#2196F3' : '#ddd')};">
           <span style="flex:2;font-size:15px;font-weight:500;">${emojiDisplay}${c.nome}</span>
           <span style="flex:1;font-size:14px;color:#666;">${c.telefone}</span>
-          <span style="flex:1;font-size:15px;font-weight:bold;color:#d4af37;text-align:right;">${estrelas} ${c.visitas || 0} visitas</span>
+          <span style="flex:1;font-size:15px;font-weight:bold;color:var(--accent);text-align:right;">${estrelas} ${c.visitas || 0} visitas</span>
           <button onclick="window.editarVisitas('${c.id}')" style="background:#2196F3;color:white;border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px;">✏️ Editar</button>
         </div>
       `;
@@ -1003,7 +1109,7 @@ window.abrirFinanceiro = function() {
     htmlPrecos += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #eee;gap:6px;flex-wrap:wrap;background:#fafafa;margin-bottom:4px;border-radius:4px;">
       <span style="flex:2;font-size:14px;font-weight:500;min-width:120px;">${serv}${sinalIcon}</span>
       <input type="number" id="preco_${serv.replace(/\s+/g,'_')}" value="${preco}" step="0.01" style="width:80px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:right;">
-      <button onclick="window.atualizarPreco('${serv}')" style="background:#d4af37;color:white;border:none;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:bold;">💾 Salvar</button>
+      <button onclick="window.atualizarPreco('${serv}')" style="background:var(--accent);color:white;border:none;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:bold;">💾 Salvar</button>
       <button onclick="window.editarServico('${serv}')" style="background:#2196F3;color:white;border:none;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:bold;">✏️ Editar</button>
       <button onclick="window.toggleSinalServico('${serv}')" style="background:#9C27B0;color:white;border:none;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:bold;">${cobraSinal ? '🔐 Desativar' : '🔓 Ativar'}</button>
       <button onclick="window.excluirServico('${serv}')" style="background:#c0392b;color:white;border:none;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:bold;">🗑️ Excluir</button>
@@ -1018,7 +1124,7 @@ window.abrirFinanceiro = function() {
       gastosHTML += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:#f5f5f5;margin:5px 0;border-radius:6px;flex-wrap:wrap;">
         <span style="flex:1;font-size:14px;">${g.descricao || ''} - R$ ${(g.valor || 0).toFixed(2)}</span>
         <div style="display:flex;gap:6px;">
-          <button onclick="window.editarGasto(${realIndex})" style="background:#d4af37;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;">✏️ Editar</button>
+          <button onclick="window.editarGasto(${realIndex})" style="background:var(--accent);color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;">✏️ Editar</button>
           <button onclick="window.excluirGasto(${realIndex})" style="background:#c0392b;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;">🗑️</button>
         </div>
       </div>`;
@@ -1104,3 +1210,7 @@ window.adicionarFeriado = function() {
   gerarCalendario();
   alert('✅ Feriado cadastrado!');
 };
+
+// ========== APLICA CORES AO CARREGAR (BACKUP) ==========
+// Garante que as cores sejam aplicadas mesmo se o <script> inline do HTML falhar
+aplicarCores();
