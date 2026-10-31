@@ -243,7 +243,6 @@ body {
   border: 1px solid transparent;
 }
 
-/* ====== FIM DE SEMANA ====== */
 .day.sabado { background: #eef4fb; border-color: #d5e3f2; }
 .day.sabado strong { color: #4a6fa5; }
 .day.sabado:hover { background: #e0ecfa; border-color: #a8c4e8; }
@@ -252,7 +251,6 @@ body {
 .day.domingo strong { color: #b5624a; }
 .day.domingo:hover { background: #fbe2d7; border-color: #eebaa4; }
 
-/* ====== HOJE ====== */
 .day.hoje {
   background: #fdfbf7;
   border: 2px solid var(--accent);
@@ -396,6 +394,38 @@ body {
   border-color: var(--accent);
   background: #fff;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* ========== TEXTAREA (Observações) ========== */
+.form-group textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid #e8e0d0;
+  background: #fdfbf7;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: all 0.2s;
+  font-family: inherit;
+  color: #333;
+  resize: vertical;
+  min-height: 60px;
+  line-height: 1.4;
+}
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: #fff;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* Preview de observação nas listas */
+.obs-preview {
+  font-size: 11px;
+  color: #ff9800;
+  font-style: italic;
+  margin-top: 4px;
+  width: 100%;
+  line-height: 1.3;
 }
 
 /* Emoji picker */
@@ -673,7 +703,7 @@ body {
 }
 .lista-clientes .cliente-acoes button:hover { background: #0b7dda; }
 
-/* ========== PRESETS DE CORES (Modal Personalizar) ========== */
+/* ========== PRESETS DE CORES ========== */
 .preset-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
